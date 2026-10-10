@@ -167,6 +167,24 @@ export const confirmSlot = (requestId, slot, spot) => {
   write(KEYS.requests, requests);
 };
 
+// ── Reputation ────────────────────────────────────────────────────────────────
+export const getUserStats = (userId) => {
+  const books = getBooks();
+  const requests = getRequests();
+  const shared   = books.filter((b) => b.ownerId === userId && b.status === 'gone').length;
+  const received = requests.filter((r) => r.requesterId === userId && r.status === 'done').length;
+  const active   = books.filter((b) => b.ownerId === userId && b.status === 'available').length;
+  return { shared, received, active, total: shared + received };
+};
+
+export const getRepBadge = (total) => {
+  if (total === 0) return null;
+  if (total < 3)  return { label: 'New sharer',    emoji: '🌱', color: 'bg-green-100 text-green-700' };
+  if (total < 7)  return { label: 'Book lover',    emoji: '📖', color: 'bg-blue-100 text-blue-700' };
+  if (total < 15) return { label: 'Community star',emoji: '⭐', color: 'bg-yellow-100 text-yellow-700' };
+  return            { label: 'Legend',             emoji: '🏆', color: 'bg-amber-100 text-amber-700' };
+};
+
 // ── Wishlist ──────────────────────────────────────────────────────────────────
 export const getWishlist = () => read(KEYS.wishlist, []);
 
@@ -223,4 +241,15 @@ export const seedDemoData = (userLat, userLng) => {
     { title: 'Educated', author: 'Tara Westover', genre: 'nonfiction', condition: 'Like new', note: 'Incredible memoir. Will change how you think.', lat: userLat + 0.006, lng: userLng - 0.012, ownerName: 'Kay', ownerId: 'demo5' },
   ];
   write(KEYS.books, demos.map((d) => ({ id: uid(), ...d, imageDataUrl: null, status: 'available', createdAt: Date.now() - Math.random() * 86400000 * 3 })));
+
+  // Seed some "done" books so demo owners show reputation badges
+  const doneBooks = [
+    { title: 'Old Book 1', author: 'Author A', genre: 'fiction', condition: 'Good', note: '', lat: userLat, lng: userLng, ownerName: 'Jiaxin', ownerId: 'demo1', status: 'gone' },
+    { title: 'Old Book 2', author: 'Author B', genre: 'nonfiction', condition: 'Worn', note: '', lat: userLat, lng: userLng, ownerName: 'Jiaxin', ownerId: 'demo1', status: 'gone' },
+    { title: 'Old Book 3', author: 'Author C', genre: 'scifi', condition: 'Good', note: '', lat: userLat, lng: userLng, ownerName: 'Rafaella', ownerId: 'demo2', status: 'gone' },
+    { title: 'Old Book 4', author: 'Author D', genre: 'selfhelp', condition: 'Like new', note: '', lat: userLat, lng: userLng, ownerName: 'Rafaella', ownerId: 'demo2', status: 'gone' },
+    { title: 'Old Book 5', author: 'Author E', genre: 'history', condition: 'Good', note: '', lat: userLat, lng: userLng, ownerName: 'Rafaella', ownerId: 'demo2', status: 'gone' },
+  ];
+  const existing = read(KEYS.books, []);
+  write(KEYS.books, [...existing, ...doneBooks.map((d) => ({ id: uid(), ...d, imageDataUrl: null, createdAt: Date.now() - Math.random() * 86400000 * 10 }))]);
 };

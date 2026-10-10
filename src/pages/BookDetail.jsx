@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, User, MessageCircle, CheckCircle, BookOpen, Trash2, Heart } from 'lucide-react';
-import { getBooks, distanceKm, createRequest, getRequests, deleteBook } from '../store';
+import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck } from 'lucide-react';
+import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge } from '../store';
 import { BookCover } from '../components/BookCard';
 
 const CONDITION_INFO = {
@@ -92,25 +92,52 @@ export default function BookDetail({ user }) {
           </div>
         </div>
 
-        {/* Owner card */}
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-warm-100 flex items-center justify-center text-xl flex-shrink-0">
-            👤
-          </div>
-          <div>
-            <p className="font-semibold text-gray-800 text-sm">{book.ownerName}</p>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3 h-3 text-warm-400" />
-              {distance < 1 ? `${Math.round(distance * 1000)} m away` : `${distance.toFixed(1)} km away`}
-            </p>
-          </div>
-          {book.status === 'available' && !isOwner && (
-            <div className="ml-auto flex items-center gap-1 text-xs text-sage-600 font-semibold bg-sage-50 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse inline-block" />
-              Available
+        {/* Owner card with reputation */}
+        {(() => {
+          const stats = getUserStats(book.ownerId);
+          const badge = getRepBadge(stats.total);
+          return (
+            <div className="card p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-warm-100 flex items-center justify-center text-xl flex-shrink-0">
+                  👤
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-gray-800 text-sm">{book.ownerName}</p>
+                    <ShieldCheck className="w-3.5 h-3.5 text-sage-500" title="Community member" />
+                  </div>
+                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3 text-warm-400" />
+                    {distance < 1 ? `${Math.round(distance * 1000)} m away` : `${distance.toFixed(1)} km away`}
+                  </p>
+                </div>
+                {book.status === 'available' && !isOwner && (
+                  <div className="flex items-center gap-1 text-xs text-sage-600 font-semibold bg-sage-50 px-2.5 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sage-500 animate-pulse inline-block" />
+                    Available
+                  </div>
+                )}
+              </div>
+
+              {/* Rep stats row */}
+              <div className="flex gap-2 pt-1 border-t border-warm-50">
+                {badge && (
+                  <span className={`badge text-xs ${badge.color}`}>{badge.emoji} {badge.label}</span>
+                )}
+                {stats.shared > 0 && (
+                  <span className="badge text-xs bg-warm-100 text-warm-700">📚 {stats.shared} shared</span>
+                )}
+                {stats.received > 0 && (
+                  <span className="badge text-xs bg-sage-100 text-sage-700">✅ {stats.received} received</span>
+                )}
+                {stats.total === 0 && (
+                  <span className="text-xs text-gray-400 italic">New to BookSwap</span>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* How it works */}
         {!isOwner && book.status === 'available' && !alreadyRequested && (
