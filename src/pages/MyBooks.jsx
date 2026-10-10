@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, LogOut } from 'lucide-react';
 import { getBooks, deleteBook, clearUser } from '../store';
 import BookCard from '../components/BookCard';
+// warm page bg applied via inline styles below
 
 export default function MyBooks({ user, onLogout }) {
   const navigate = useNavigate();
@@ -27,11 +28,13 @@ export default function MyBooks({ user, onLogout }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-3 sticky top-0 z-10">
+      <div className="sticky top-0 z-10 px-4 pt-5 pb-3 border-b border-warm-100" style={{ background: '#fdf6ec' }}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">My Books</h1>
-            <p className="text-xs text-gray-500">{user.name} · {myBooks.length} listing{myBooks.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-xl font-bold text-warm-800" style={{ fontFamily: 'Lora, Georgia, serif' }}>
+              My Shelf 📚
+            </h1>
+            <p className="text-xs text-warm-500">{user.name} · {myBooks.length} listing{myBooks.length !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={handleLogout} className="btn-ghost text-xs flex items-center gap-1.5 text-gray-400">
             <LogOut className="w-3.5 h-3.5" /> Sign out
