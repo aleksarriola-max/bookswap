@@ -125,6 +125,48 @@ export const sendMessage = ({ requestId, senderId, senderName, text }) => {
 export const getMessagesForRequest = (requestId) =>
   getMessages().filter((m) => m.requestId === requestId);
 
+// ── Availability & meetup ─────────────────────────────────────────────────────
+// Stored inside the request object itself once set.
+
+export const SLOT_LABELS = [
+  { id: 'mon_am',  label: 'Mon morning' },
+  { id: 'mon_pm',  label: 'Mon evening' },
+  { id: 'tue_am',  label: 'Tue lunchtime' },
+  { id: 'tue_pm',  label: 'Tue evening' },
+  { id: 'wed_am',  label: 'Wed morning' },
+  { id: 'wed_pm',  label: 'Wed evening' },
+  { id: 'thu_am',  label: 'Thu lunchtime' },
+  { id: 'thu_pm',  label: 'Thu evening' },
+  { id: 'fri_am',  label: 'Fri morning' },
+  { id: 'fri_pm',  label: 'Fri afternoon' },
+  { id: 'sat',     label: 'Sat anytime' },
+  { id: 'sun',     label: 'Sun anytime' },
+];
+
+// Generic community meetup spots (real-feeling; in a real app these come from the map)
+export const MEETUP_SPOTS = [
+  'Building lobby',
+  'Campus main entrance',
+  'Nearest café',
+  'Library entrance',
+  'Park bench nearby',
+  'Co-working common area',
+];
+
+export const setRequestAvailability = (requestId, slots) => {
+  const requests = getRequests().map((r) =>
+    r.id === requestId ? { ...r, offeredSlots: slots } : r
+  );
+  write(KEYS.requests, requests);
+};
+
+export const confirmSlot = (requestId, slot, spot) => {
+  const requests = getRequests().map((r) =>
+    r.id === requestId ? { ...r, confirmedSlot: slot, confirmedSpot: spot } : r
+  );
+  write(KEYS.requests, requests);
+};
+
 // ── Wishlist ──────────────────────────────────────────────────────────────────
 export const getWishlist = () => read(KEYS.wishlist, []);
 
