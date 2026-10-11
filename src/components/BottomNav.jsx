@@ -1,16 +1,18 @@
+import { useStoreVersion } from '../lib/cloud';
 import { NavLink } from 'react-router-dom';
 import { Search, PlusCircle, MessageCircle, BookMarked, BookHeart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getRequestsForUser, getMyWishes } from '../store';
 
 export default function BottomNav({ user }) {
+  const dataVersion = useStoreVersion();
   const [unread, setUnread] = useState(0);
   const [wishCount, setWishCount] = useState(0);
 
   useEffect(() => {
     setUnread(getRequestsForUser(user.id).filter((r) => r.status === 'pending' && r.ownerId === user.id).length);
     setWishCount(getMyWishes(user.id).length);
-  }, [user.id]);
+  }, [user.id, dataVersion]);
 
   const tabs = [
     { to: '/',          label: 'Browse',   icon: Search },

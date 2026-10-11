@@ -1,0 +1,77 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+// Runs the production schema in Postgres with small stand-ins for Supabase's
+// auth/storage infrastructure. No cloud credentials or external database needed.
+const db = new PGlite();
+try {
+  await db.exec(`
+    create role anon; create role authenticated;
+    create schema auth; create schema storage;
+    create table auth.users(id uuid primary key);
+    create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.actor',true),'')::uuid $$;
+    create function auth.jwt() returns jsonb language sql as $$ select '{"user_metadata":{"name":"Student"}}'::jsonb $$;
+    grant usage on schema auth, public, storage to authenticated, anon;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid default gen_random_uuid(), bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    grant insert, delete, select on storage.objects to authenticated;
+    create function storage.foldername(name text) returns text[] language sql as $$ select string_to_array(name,'/') $$;
+  `);
+  const schema = await readFile(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+  // Embedded Postgres has no replication service; all tables, policies and RPCs are unchanged.
+  await db.exec(schema.replace(/alter publication supabase_realtime[^;]+;/, ''));
+  const owner = '11111111-1111-4111-8111-111111111111';
+  const reader = '22222222-2222-4222-8222-222222222222';
+  const outsider = '33333333-3333-4333-8333-333333333333';
+  await db.query('insert into auth.users values ($1),($2),($3)', [owner, reader, outsider]);
+  async function as(id) { await db.exec('reset role'); await db.query("select set_config('test.actor',$1,false)", [id]); await db.exec('set role authenticated'); }
+  async function action(name,args) { return (await db.query('select public.bookswap_action($1,$2::jsonb) as result',[name,JSON.stringify(args)])).rows[0].result; }
+  await as(owner);
+  const book = await action('addBook',{title:'Test book',author:'Author',condition:'Good',genre:'fiction',lat:42.360156,lng:-71.058987,ownerId:outsider});
+  assert.equal(book.ownerId,owner); assert.equal(book.lat,42.36); assert.equal(book.lng,-71.06);
+  await assert.rejects(() => db.query('update public.books set owner_id=$1',[outsider]),/permission denied/);
+  await assert.rejects(() => action('createRequest',{bookId:book.id}),/own book/);
+  await as(reader);
+  const request = await action('createRequest',{bookId:book.id,ownerId:outsider,requesterId:outsider});
+  assert.equal(request.requesterId,reader); assert.equal(request.ownerId,owner);
+  assert.equal((await action('createRequest',{bookId:book.id})).id,request.id);
+  await action('sendMessage',{requestId:request.id,text:'Hello',senderId:outsider});
+  await assert.rejects(() => action('updateRequestStatus',{requestId:request.id,status:'accepted'}),/Only the owner/);
+  const wish=await action('addWish',{title:'Wanted',genre:'fiction'});
+  await as(outsider);
+  assert.equal((await db.query('select * from public.requests')).rows.length,0);
+  assert.equal((await db.query('select * from public.messages')).rows.length,0);
+  assert.equal((await db.query('select * from public.wishlist')).rows.length,0);
+  await assert.rejects(() => action('sendMessage',{requestId:request.id,text:'Intrusion'}),/not found/);
+  await assert.rejects(() => action('deleteBook',{bookId:book.id}),/Only the owner/);
+  await assert.rejects(() => action('addStickyNote',{bookId:book.id,text:'Unauthorized'}),/Only the owner or a recipient/);
+  await assert.rejects(() => action('removeWish',{wishId:wish.id}),/not found/);
+  const second = await action('createRequest',{bookId:book.id});
+  await as(owner);
+  await action('updateRequestStatus',{requestId:request.id,status:'accepted'});
+  await assert.rejects(() => action('updateRequestStatus',{requestId:second.id,status:'accepted'}),/already accepted/);
+  await assert.rejects(() => action('updateRequestStatus',{requestId:request.id,status:'done'}),/Confirm a meetup/);
+  await assert.rejects(() => action('deleteBook',{bookId:book.id}),/active requests/);
+  await as(reader);
+  await assert.rejects(() => action('setRequestAvailability',{requestId:request.id,slots:['invalid']}),/Invalid time/);
+  await action('setRequestAvailability',{requestId:request.id,slots:['sat']});
+  await as(owner);
+  await assert.rejects(() => action('confirmSlot',{requestId:request.id,slot:'sun',spot:'Library'}),/offered time/);
+  await action('confirmSlot',{requestId:request.id,slot:'sat',spot:'Library'});
+  await action('updateRequestStatus',{requestId:request.id,status:'done',journeyNote:'Enjoy!'});
+  const complete=(await db.query('select data from public.books')).rows[0].data;
+  assert.equal(complete.status,'gone'); assert.equal(complete.journey[0].userId,reader);
+  await assert.rejects(() => action('updateRequestStatus',{requestId:request.id,status:'done'}),/Invalid exchange/);
+  await as(reader);
+  await assert.rejects(() => action('sendMessage',{requestId:request.id,text:'Closed'}),/closed/);
+  await action('addStickyNote',{bookId:book.id,text:'Loved it'});
+  await as(outsider);
+  assert.equal((await db.query('select data from public.requests')).rows[0].data.status,'declined');
+  await db.query('insert into storage.objects(bucket_id,name) values ($1,$2)',['book-covers',`${outsider}/cover.jpg`]);
+  await assert.rejects(() => db.query('insert into storage.objects(bucket_id,name) values ($1,$2)',['book-covers',`${owner}/cover.jpg`]),/row-level security/);
+  await as('');
+  await assert.rejects(() => action('addWish',{title:'No session'}),/sign in/);
+  console.log('PASS: schema, participant privacy, ownership, spoofing prevention, exchange transitions, reader notes, cover upload policy.');
+} finally { await db.close(); }

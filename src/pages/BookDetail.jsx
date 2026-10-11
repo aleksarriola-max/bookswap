@@ -1,3 +1,4 @@
+import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote, Route } from 'lucide-react';
@@ -11,6 +12,7 @@ const CONDITION_INFO = {
 };
 
 export default function BookDetail({ user }) {
+  const dataVersion = useStoreVersion();
   const { id } = useParams();
   const navigate = useNavigate();
   const [book, setBook] = useState(null);
@@ -25,7 +27,7 @@ export default function BookDetail({ user }) {
     if (b) {
       setAlreadyRequested(!!getRequests().find((r) => r.bookId === b.id && r.requesterId === user.id));
     }
-  }, [id, user.id]);
+  }, [id, user.id, dataVersion]);
 
   if (!book) return (
     <div className="p-6 text-center text-gray-400">
@@ -39,23 +41,20 @@ export default function BookDetail({ user }) {
   const distance = distanceKm(user.lat, user.lng, book.lat, book.lng);
   const condInfo = CONDITION_INFO[book.condition] || { label: book.condition, color: 'bg-gray-100 text-gray-600' };
 
-  const handleRequest = () => {
+  const handleRequest = async () => {
     setRequesting(true);
-    const req = createRequest({
+    const req = await runAction(() => createRequest({
       bookId: book.id, bookTitle: book.title,
       requesterId: user.id, requesterName: user.name, ownerId: book.ownerId,
-    });
-    setTimeout(() => {
+    }));
       setRequesting(false);
       if (req) navigate(`/messages/${req.id}`);
-      else setAlreadyRequested(true);
-    }, 600);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm(`Remove "${book.title}" from your listings?`)) {
-      deleteBook(book.id);
-      navigate('/my-books');
+      const removed = await runAction(async () => { await deleteBook(book.id); return true; });
+      if (removed) navigate('/my-books');
     }
   };
 
@@ -224,8 +223,9 @@ export default function BookDetail({ user }) {
                     className="btn-secondary flex-1 text-sm">Cancel</button>
                   <button
                     disabled={!stickyText.trim()}
-                    onClick={() => {
-                      addStickyNote(book.id, { userId: user.id, userName: user.name, text: stickyText.trim() });
+                    onClick={async () => {
+                      const saved = await runAction(async () => { await addStickyNote(book.id, { userId: user.id, userName: user.name, text: stickyText.trim() }); return true; });
+                      if (!saved) return;
                       setStickyText(''); setShowStickyForm(false);
                       setBook(getBooks().find((b) => b.id === id) || book);
                     }}

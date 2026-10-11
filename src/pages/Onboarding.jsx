@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { createUser } from '../store';
+import { cloudEnabled } from '../lib/cloud';
 
-export default function Onboarding({ onJoined }) {
-  const [name, setName] = useState('');
-  const [step, setStep] = useState('name');
+export default function Onboarding({ onJoined, initialName = '' }) {
+  const [name, setName] = useState(initialName);
+  const [step, setStep] = useState(cloudEnabled ? 'location' : 'name');
   const [error, setError] = useState('');
 
   const handleName = (e) => {
@@ -56,7 +57,7 @@ export default function Onboarding({ onJoined }) {
         <div className="text-center mb-8">
           <div className="inline-block text-6xl mb-3 drop-shadow-sm">📚</div>
           <h1 className="text-3xl font-bold text-warm-800" style={{ fontFamily: 'Lora, Georgia, serif' }}>
-            BookSwap
+            Ctrl+Us
           </h1>
           <p className="text-warm-600 mt-1.5 text-sm leading-relaxed">
             Share the books you love<br/>with people right around you
@@ -82,7 +83,7 @@ export default function Onboarding({ onJoined }) {
               Let's go →
             </button>
             <p className="text-xs text-center text-gray-400">
-              No sign-up required · works in your browser
+              {cloudEnabled ? 'Choose your name and neighborhood' : 'No sign-up required · works in your browser'}
             </p>
           </form>
         )}

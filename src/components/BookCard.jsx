@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { getPalette, GENRES, getUserStats, getRepBadge } from '../store';
 
@@ -9,12 +10,13 @@ const CONDITION_COLORS = {
 };
 
 export function BookCover({ book, size = 'md' }) {
+  const [brokenUrl, setBrokenUrl] = useState(null);
   const dims = size === 'lg' ? 'w-24 h-36' : 'w-14 h-20';
 
-  if (book.imageDataUrl) {
+  if (book.imageDataUrl && brokenUrl !== book.imageDataUrl) {
     return (
       <div className={`${dims} rounded-xl overflow-hidden flex-shrink-0 shadow-md`}>
-        <img src={book.imageDataUrl} alt={book.title} className="w-full h-full object-cover" />
+        <img src={book.imageDataUrl} alt={book.title} className="w-full h-full object-cover" loading="lazy" onError={() => setBrokenUrl(book.imageDataUrl)} />
       </div>
     );
   }

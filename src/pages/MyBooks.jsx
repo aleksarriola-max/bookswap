@@ -1,3 +1,4 @@
+import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, LogOut, BookOpen } from 'lucide-react';
@@ -5,6 +6,7 @@ import { getBooks, deleteBook, clearUser, getUserStats, getRepBadge } from '../s
 import BookCard from '../components/BookCard';
 
 export default function MyBooks({ user, onLogout }) {
+  const dataVersion = useStoreVersion();
   const navigate = useNavigate();
   const [myBooks, setMyBooks] = useState([]);
   const [stats, setStats] = useState({ shared: 0, received: 0, active: 0, total: 0 });
@@ -13,13 +15,14 @@ export default function MyBooks({ user, onLogout }) {
     setMyBooks(getBooks().filter((b) => b.ownerId === user.id));
     setStats(getUserStats(user.id));
   };
-  useEffect(() => { load(); }, [user.id]);
+  useEffect(() => { load(); }, [user.id, dataVersion]);
 
   const badge = getRepBadge(stats.total);
 
-  const handleLogout = () => {
-    if (window.confirm('Sign out and clear your local data?')) {
-      clearUser(); onLogout();
+  const handleLogout = async () => {
+    if (window.confirm('Sign out of Ctrl+Us?')) {
+      const signedOut = await runAction(async () => { await clearUser(); return true; });
+      if (signedOut) onLogout();
     }
   };
 

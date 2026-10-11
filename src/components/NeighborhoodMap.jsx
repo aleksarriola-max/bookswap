@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MeetupPlaces from './MeetupPlaces';
 
 // Esri imagery is used for this noncommercial school project under:
 // https://www.esri.com/en-us/legal/terms/web-site-service
@@ -24,6 +25,7 @@ export default function NeighborhoodMap({ user, books, radius }) {
   const [layer, setLayer] = useState('satellite');
   const [tileError, setTileError] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [meetupSpot, setMeetupSpot] = useState('');
 
   useEffect(() => {
     const instance = L.map(container.current, { scrollWheelZoom: false }).setView([user.lat, user.lng], 14);
@@ -85,6 +87,11 @@ export default function NeighborhoodMap({ user, books, radius }) {
         <p className="text-xs text-warm-500">{book.author} · {book.ownerName} · {book.condition}</p>
       </Link>}
       {books.length === 0 && <p className="text-sm text-warm-600">No books match these filters. Try a wider radius or another genre.</p>}
+      <div className="card p-3 space-y-2">
+        <h3 className="text-sm font-semibold text-warm-700">Places to meet</h3>
+        <MeetupPlaces user={user} onSelect={setMeetupSpot} />
+        {meetupSpot && <p className="text-xs text-warm-600">Suggested spot: {meetupSpot}. Confirm it with the other reader in chat.</p>}
+      </div>
     </section>
   );
 }

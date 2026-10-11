@@ -1,9 +1,11 @@
+import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookHeart, Trash2, Plus, Bell } from 'lucide-react';
 import { getMyWishes, addWish, removeWish, GENRES } from '../store';
 
 export default function Wishlist({ user }) {
+  const dataVersion = useStoreVersion();
   const navigate = useNavigate();
   const [wishes, setWishes] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -13,18 +15,19 @@ export default function Wishlist({ user }) {
   const [error, setError] = useState('');
 
   const load = () => setWishes(getMyWishes(user.id));
-  useEffect(() => { load(); }, [user.id]);
+  useEffect(() => { load(); }, [user.id, dataVersion]);
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!title.trim()) return setError('Please enter a book title.');
-    addWish({ title: title.trim(), author: author.trim(), genre, userId: user.id, userName: user.name });
+    const saved = await runAction(async () => { await addWish({ title: title.trim(), author: author.trim(), genre, userId: user.id, userName: user.name }); return true; });
+    if (!saved) return;
     setTitle(''); setAuthor(''); setGenre('other'); setError('');
     setShowForm(false);
     load();
   };
 
-  const handleRemove = (id) => { removeWish(id); load(); };
+  const handleRemove = async (id) => { await runAction(() => removeWish(id)); load(); };
 
   return (
     <div className="flex flex-col h-full">

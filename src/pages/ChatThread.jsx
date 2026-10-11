@@ -1,3 +1,4 @@
+import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -8,6 +9,7 @@ import {
   setRequestAvailability, confirmSlot, SLOT_LABELS, MEETUP_SPOTS,
 } from '../store';
 import Confetti from '../components/Confetti';
+import MeetupPlaces from '../components/MeetupPlaces';
 
 function timeAgo(ts) {
   const mins = Math.floor((Date.now() - ts) / 60000);
@@ -73,7 +75,7 @@ function AvailabilityPicker({ onSend, onClose }) {
         </div>
         <button
           disabled={selected.length === 0}
-          onClick={() => { onSend(selected); onClose(); }}
+          onClick={async () => { if (await onSend(selected)) onClose(); }}
           className="btn-primary w-full py-3"
         >
           Share my availability ({selected.length} slot{selected.length !== 1 ? 's' : ''})
@@ -84,7 +86,7 @@ function AvailabilityPicker({ onSend, onClose }) {
 }
 
 // ── Slot confirmation picker ───────────────────────────────────────────────────
-function SlotConfirm({ slots, onConfirm, onClose }) {
+function SlotConfirm({ slots, onConfirm, onClose, user }) {
   const [chosenSlot, setChosenSlot] = useState('');
   const [chosenSpot, setChosenSpot] = useState(MEETUP_SPOTS[0]);
 
@@ -92,7 +94,7 @@ function SlotConfirm({ slots, onConfirm, onClose }) {
 
   return (
     <div className="absolute inset-0 z-30 flex items-end" style={{ background: 'rgba(0,0,0,0.35)' }}>
-      <div className="w-full bg-white rounded-t-3xl p-5 space-y-4">
+      <div className="w-full bg-white rounded-t-3xl p-5 space-y-4 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-warm-800 text-base" style={{ fontFamily: 'Lora, Georgia, serif' }}>
             Confirm the meetup 📍
@@ -120,6 +122,8 @@ function SlotConfirm({ slots, onConfirm, onClose }) {
             <MapPin className="w-3 h-3 inline mr-1" />Suggested meetup spot
           </label>
           <div className="space-y-1.5">
+            <MeetupPlaces user={user} onSelect={setChosenSpot} />
+            <p className="text-xs text-warm-600">Selected: {chosenSpot}</p>
             {MEETUP_SPOTS.map((sp) => (
               <button key={sp} onClick={() => setChosenSpot(sp)}
                 className={`w-full py-2 px-3 rounded-xl text-sm text-left border transition-colors ${
@@ -134,7 +138,7 @@ function SlotConfirm({ slots, onConfirm, onClose }) {
 
         <button
           disabled={!chosenSlot}
-          onClick={() => { onConfirm(chosenSlot, chosenSpot); onClose(); }}
+          onClick={async () => { if (await onConfirm(chosenSlot, chosenSpot)) onClose(); }}
           className="btn-primary w-full py-3"
         >
           Confirm meetup ✅
@@ -167,7 +171,7 @@ function QRHandoff({ request, onDone, onClose }) {
         />
         <div className="flex gap-2">
           <button onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
-          <button onClick={() => { onDone(note); onClose(); }} className="btn-primary flex-1 text-sm">
+          <button onClick={async () => { if (await onDone(note)) onClose(); }} className="btn-primary flex-1 text-sm">
             ✅ Confirm done
           </button>
         </div>
@@ -178,6 +182,7 @@ function QRHandoff({ request, onDone, onClose }) {
 
 // ── Main ChatThread ───────────────────────────────────────────────────────────
 export default function ChatThread({ user }) {
+  const dataVersion = useStoreVersion();
   const { id: requestId } = useParams();
   const navigate = useNavigate();
   const [request, setRequest] = useState(null);
@@ -195,7 +200,7 @@ export default function ChatThread({ user }) {
     setMessages(getMessagesForRequest(requestId));
   };
 
-  useEffect(() => { load(); }, [requestId]);
+  useEffect(() => { load(); }, [requestId, dataVersion]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   if (!request) return (
@@ -208,35 +213,32 @@ export default function ChatThread({ user }) {
   const isOwner = request.ownerId === user.id;
   const isClosed = request.status === 'declined' || request.status === 'done';
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    sendMessage({ requestId, senderId: user.id, senderName: user.name, text: text.trim() });
-    setText(''); load();
+    await runAction(async () => {
+      await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: text.trim() });
+      setText(''); load();
+    });
   };
-
-  const handleSendAvailability = (slots) => {
-    setRequestAvailability(requestId, slots);
-    const labels = slots.map((id) => SLOT_LABELS.find((s) => s.id === id)?.label).join(', ');
-    sendMessage({ requestId, senderId: user.id, senderName: user.name, text: `📅 I'm free: ${labels}` });
-    load();
-  };
-
-  const handleConfirmSlot = (slot, spot) => {
-    confirmSlot(requestId, slot, spot);
-    const label = SLOT_LABELS.find((s) => s.id === slot)?.label;
-    sendMessage({ requestId, senderId: user.id, senderName: user.name, text: `✅ Confirmed: ${label} at ${spot}` });
-    load();
-  };
-
-  const handleDone = (journeyNote = '') => {
-    updateRequestStatus(requestId, 'done', journeyNote);
-    setShowConfetti(true);
-    load();
-  };
-
-  const handleAccept = () => { updateRequestStatus(requestId, 'accepted'); load(); };
-  const handleDecline = () => { updateRequestStatus(requestId, 'declined'); load(); };
+  const handleSendAvailability = slots => runAction(async () => {
+    await setRequestAvailability(requestId, slots);
+    const labels = slots.map(id => SLOT_LABELS.find(s => s.id === id)?.label).join(', ');
+    await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: '📅 I am free: ' + labels });
+    load(); return true;
+  });
+  const handleConfirmSlot = (slot, spot) => runAction(async () => {
+    await confirmSlot(requestId, slot, spot);
+    const label = SLOT_LABELS.find(s => s.id === slot)?.label;
+    await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: '✅ Confirmed: ' + label + ' at ' + spot });
+    load(); return true;
+  });
+  const handleDone = (journeyNote = '') => runAction(async () => {
+    await updateRequestStatus(requestId, 'done', journeyNote);
+    setShowConfetti(true); load(); return true;
+  });
+  const handleAccept = () => runAction(async () => { await updateRequestStatus(requestId, 'accepted'); load(); });
+  const handleDecline = () => runAction(async () => { await updateRequestStatus(requestId, 'declined'); load(); });
 
   const hasAvailability = request.offeredSlots && request.offeredSlots.length > 0;
   const isConfirmed = !!(request.confirmedSlot && request.confirmedSpot);
@@ -249,7 +251,7 @@ export default function ChatThread({ user }) {
       {/* Modals */}
       {showAvail && <AvailabilityPicker onSend={handleSendAvailability} onClose={() => setShowAvail(false)} />}
       {showConfirm && hasAvailability && (
-        <SlotConfirm slots={request.offeredSlots} onConfirm={handleConfirmSlot} onClose={() => setShowConfirm(false)} />
+        <SlotConfirm user={user} slots={request.offeredSlots} onConfirm={handleConfirmSlot} onClose={() => setShowConfirm(false)} />
       )}
       {showQR && <QRHandoff request={request} onDone={handleDone} onClose={() => setShowQR(false)} />}
 

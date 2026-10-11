@@ -1,3 +1,4 @@
+import { useStoreVersion } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, BookOpen, ChevronRight, Clock } from 'lucide-react';
@@ -27,6 +28,7 @@ function timeAgo(ts) {
 }
 
 export default function Inbox({ user }) {
+  const dataVersion = useStoreVersion();
   const [requests, setRequests] = useState([]);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function Inbox({ user }) {
       return { ...r, lastMessage: msgs[msgs.length - 1] || null };
     });
     setRequests(enriched.sort((a, b) => b.createdAt - a.createdAt));
-  }, [user.id]);
+  }, [user.id, dataVersion]);
 
   if (requests.length === 0) {
     return (

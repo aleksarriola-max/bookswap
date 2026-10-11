@@ -1,3 +1,5 @@
+import { cloudEnabled, cloudCache, cloudUserId, cloudAction, uploadCover, notifyStore, supabase } from './lib/cloud';
+
 // store.js — localStorage-backed state
 
 const KEYS = {
@@ -9,10 +11,11 @@ const KEYS = {
 };
 
 const read = (key, fallback) => {
+  if (cloudEnabled && key !== KEYS.user) return cloudCache[Object.keys(KEYS).find(name => KEYS[name] === key)] || fallback;
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }
   catch { return fallback; }
 };
-const write = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+const write = (key, val) => { localStorage.setItem(key, JSON.stringify(val)); notifyStore(); };
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 // ── Genres ────────────────────────────────────────────────────────────────────
@@ -43,16 +46,16 @@ export const distanceKm = (lat1, lon1, lat2, lon2) => {
 export const getUser = () => read(KEYS.user, null);
 export const saveUser = (u) => write(KEYS.user, u);
 export const createUser = ({ name, lat, lng }) => {
-  const user = { id: uid(), name, lat, lng, joinedAt: Date.now() };
+  const user = { id: cloudEnabled ? cloudUserId() : uid(), name, lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100, joinedAt: Date.now() };
   saveUser(user);
   return user;
 };
-export const clearUser = () => localStorage.removeItem(KEYS.user);
+export const clearUser = async () => { if (cloudEnabled) { const { error } = await supabase.auth.signOut(); if (error) throw error; } localStorage.removeItem(KEYS.user); };
 
 // ── Books ─────────────────────────────────────────────────────────────────────
 export const getBooks = () => read(KEYS.books, []);
 
-export const addBook = ({ title, author, condition, genre, note, imageDataUrl, ownerId, ownerName, lat, lng }) => {
+const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, ownerId, ownerName, lat, lng }) => {
   const book = {
     id: uid(), title, author,
     condition,                     // 'Like new' | 'Good' | 'Worn'
@@ -70,7 +73,7 @@ export const addBook = ({ title, author, condition, genre, note, imageDataUrl, o
 export const updateBookStatus = (bookId, status) =>
   write(KEYS.books, getBooks().map((b) => b.id === bookId ? { ...b, status } : b));
 
-export const deleteBook = (bookId) => {
+const localdeleteBook = (bookId) => {
   write(KEYS.books, getBooks().filter((b) => b.id !== bookId));
   write(KEYS.requests, getRequests().filter((r) => r.bookId !== bookId));
 };
@@ -89,7 +92,7 @@ export const getSurpriseBook = (lat, lng, userId, radiusKm = 5) => {
 // ── Requests ──────────────────────────────────────────────────────────────────
 export const getRequests = () => read(KEYS.requests, []);
 
-export const createRequest = ({ bookId, bookTitle, requesterId, requesterName, ownerId }) => {
+const localcreateRequest = ({ bookId, bookTitle, requesterId, requesterName, ownerId }) => {
   if (getRequests().find((r) => r.bookId === bookId && r.requesterId === requesterId)) return null;
   const req = {
     id: uid(), bookId, bookTitle, requesterId, requesterName, ownerId,
@@ -100,7 +103,7 @@ export const createRequest = ({ bookId, bookTitle, requesterId, requesterName, o
   return req;
 };
 
-export const updateRequestStatus = (requestId, status, journeyNote = '') => {
+const localupdateRequestStatus = (requestId, status, journeyNote = '') => {
   const requests = getRequests().map((r) => r.id === requestId ? { ...r, status } : r);
   write(KEYS.requests, requests);
   const req = requests.find((r) => r.id === requestId);
@@ -120,7 +123,7 @@ export const getRequestsForUser = (userId) =>
 // ── Messages ──────────────────────────────────────────────────────────────────
 export const getMessages = () => read(KEYS.messages, []);
 
-export const sendMessage = ({ requestId, senderId, senderName, text }) => {
+const localsendMessage = ({ requestId, senderId, senderName, text }) => {
   const msg = { id: uid(), requestId, senderId, senderName, text, sentAt: Date.now() };
   write(KEYS.messages, [...getMessages(), msg]);
   return msg;
@@ -157,14 +160,14 @@ export const MEETUP_SPOTS = [
   'Co-working common area',
 ];
 
-export const setRequestAvailability = (requestId, slots) => {
+const localsetRequestAvailability = (requestId, slots) => {
   const requests = getRequests().map((r) =>
     r.id === requestId ? { ...r, offeredSlots: slots } : r
   );
   write(KEYS.requests, requests);
 };
 
-export const confirmSlot = (requestId, slot, spot) => {
+const localconfirmSlot = (requestId, slot, spot) => {
   const requests = getRequests().map((r) =>
     r.id === requestId ? { ...r, confirmedSlot: slot, confirmedSpot: spot } : r
   );
@@ -184,7 +187,7 @@ export const addJourneyEntry = (bookId, { userId, userName, note }) => {
   write(KEYS.books, books);
 };
 
-export const addStickyNote = (bookId, { userId, userName, text }) => {
+const localaddStickyNote = (bookId, { userId, userName, text }) => {
   const books = getBooks().map((b) => {
     if (b.id !== bookId) return b;
     const notes = b.stickyNotes || [];
@@ -223,13 +226,13 @@ export const getRepBadge = (total) => {
 // ── Wishlist ──────────────────────────────────────────────────────────────────
 export const getWishlist = () => read(KEYS.wishlist, []);
 
-export const addWish = ({ title, author, genre, userId, userName }) => {
+const localaddWish = ({ title, author, genre, userId, userName }) => {
   const wish = { id: uid(), title, author: author || '', genre: genre || 'other', userId, userName, createdAt: Date.now() };
   write(KEYS.wishlist, [wish, ...getWishlist()]);
   return wish;
 };
 
-export const removeWish = (wishId) =>
+const localremoveWish = (wishId) =>
   write(KEYS.wishlist, getWishlist().filter((w) => w.id !== wishId));
 
 export const getMyWishes = (userId) => getWishlist().filter((w) => w.userId === userId);
@@ -265,7 +268,7 @@ export const getPalette = (title) => {
 
 // ── Seed demo data ────────────────────────────────────────────────────────────
 export const seedDemoData = (userLat, userLng) => {
-  if (getBooks().length > 0) return;
+  if (cloudEnabled || getBooks().length > 0) return;
   const demos = [
     { title: 'Project Hail Mary', author: 'Andy Weir', genre: 'scifi', condition: 'Like new', note: '🚀 Great sci-fi — loved it! Perfect condition.', lat: userLat + 0.008, lng: userLng + 0.005, ownerName: 'Jiaxin', ownerId: 'demo1' },
     { title: 'Atomic Habits', author: 'James Clear', genre: 'selfhelp', condition: 'Good', note: 'Some highlights & margin notes inside 📝', lat: userLat - 0.004, lng: userLng + 0.011, ownerName: 'Rafaella', ownerId: 'demo2' },
@@ -288,3 +291,18 @@ export const seedDemoData = (userLat, userLng) => {
   const existing = read(KEYS.books, []);
   write(KEYS.books, [...existing, ...doneBooks.map((d) => ({ id: uid(), ...d, imageDataUrl: null, createdAt: Date.now() - Math.random() * 86400000 * 10 }))]);
 };
+
+// Shared mode uses atomic server actions; demo mode retains its existing local store.
+export const addBook = async args => {
+  if (!cloudEnabled) return localaddBook(args);
+  return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl) });
+};
+export const deleteBook = async bookId => cloudEnabled ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
+export const createRequest = async args => cloudEnabled ? cloudAction('createRequest', args) : localcreateRequest(args);
+export const updateRequestStatus = async (requestId, status, journeyNote = '') => cloudEnabled ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
+export const sendMessage = async args => cloudEnabled ? cloudAction('sendMessage', args) : localsendMessage(args);
+export const setRequestAvailability = async (requestId, slots) => cloudEnabled ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);
+export const confirmSlot = async (requestId, slot, spot) => cloudEnabled ? cloudAction('confirmSlot', { requestId, slot, spot }) : localconfirmSlot(requestId, slot, spot);
+export const addStickyNote = async (bookId, args) => cloudEnabled ? cloudAction('addStickyNote', { bookId, ...args }) : localaddStickyNote(bookId, args);
+export const addWish = async args => cloudEnabled ? cloudAction('addWish', args) : localaddWish(args);
+export const removeWish = async wishId => cloudEnabled ? cloudAction('removeWish', { wishId }) : localremoveWish(wishId);

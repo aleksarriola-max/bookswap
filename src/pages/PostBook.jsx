@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, BookOpen, ArrowLeft } from 'lucide-react';
 import { addBook, GENRES } from '../store';
+import BookLookup from '../components/BookLookup';
+import { runAction } from '../lib/cloud';
 
 const CONDITIONS = ['Like new', 'Good', 'Worn'];
 
@@ -31,22 +33,23 @@ export default function PostBook({ user }) {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) return setErrors(errs);
     setSaving(true);
-    setTimeout(() => {
-      addBook({
+    const saved = await runAction(async () => {
+      await addBook({
         title: title.trim(), author: author.trim(), condition, genre,
         note: note.trim(), imageDataUrl,
         ownerId: user.id, ownerName: user.name,
         lat: user.lat + (Math.random() - 0.5) * 0.002,
         lng: user.lng + (Math.random() - 0.5) * 0.002,
       });
-      setSaving(false);
-      navigate('/my-books');
-    }, 400);
+      return true;
+    });
+    setSaving(false);
+    if (saved) navigate('/my-books');
   };
 
   return (
@@ -60,6 +63,7 @@ export default function PostBook({ user }) {
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <BookLookup onSelect={book => { setTitle(book.title); setAuthor(book.author); if (book.cover) setImageDataUrl(book.cover); setErrors({}); }} />
         {/* Photo */}
         <div className="card p-4">
           <label className="text-sm font-semibold text-warm-700 mb-2 block">Cover photo (optional)</label>

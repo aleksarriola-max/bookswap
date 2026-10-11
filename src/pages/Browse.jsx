@@ -1,13 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useStoreVersion } from '../lib/cloud';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
 import { getNearbyBooks, distanceKm, seedDemoData, GENRES, getCommunityStats } from '../store';
 import BookCard from '../components/BookCard';
-import NeighborhoodMap from '../components/NeighborhoodMap';
+const NeighborhoodMap = lazy(() => import('../components/NeighborhoodMap'));
 
 const CONDITIONS = ['All', 'Like new', 'Good', 'Worn'];
 
 export default function Browse({ user }) {
+  const dataVersion = useStoreVersion();
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
   const [search, setSearch] = useState('');
@@ -22,7 +24,7 @@ export default function Browse({ user }) {
   useEffect(() => {
     seedDemoData(user.lat, user.lng);
     setBooks(getNearbyBooks(user.lat, user.lng, radius));
-  }, [user, radius]);
+  }, [user, radius, dataVersion]);
 
   const filtered = books.filter((b) => {
     const q = search.toLowerCase();
@@ -173,7 +175,7 @@ export default function Browse({ user }) {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-        {view === 'map' ? <NeighborhoodMap user={user} books={filtered} radius={radius} /> : filtered.length === 0 ? (
+        {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">📭</div>
             <p className="font-semibold text-warm-700" style={{ fontFamily: 'Lora, Georgia, serif' }}>
