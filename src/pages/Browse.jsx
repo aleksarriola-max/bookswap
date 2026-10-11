@@ -88,6 +88,7 @@ export default function Browse({ user }) {
           </div>
 
           {/* Search */}
+          {books.some(book => book.isDemo) && <p className="text-xs text-blue-800 bg-blue-50 rounded-xl p-2 mb-2">School preview: Demo labels mark sample books and fictional sharers.</p>}
           <div className="flex gap-2 mb-2 items-center">
             <select className="input text-xs" aria-label="Filter by group" value={groupId} onChange={e => setGroupId(e.target.value)}><option value="">All my neighborhoods</option>{getJoinedGroups().map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
             <Link className="text-xs text-warm-600 font-semibold" to="/community">Groups</Link>

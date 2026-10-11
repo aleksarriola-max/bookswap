@@ -80,6 +80,7 @@ export default function BookCard({ book, distance }) {
         )}
 
         <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {book.isDemo && <span className="badge text-[10px] bg-blue-50 text-blue-700">Demo</span>}
           <span className={`badge text-[10px] ${CONDITION_COLORS[book.condition] || 'bg-gray-100 text-gray-500'}`}>
             {book.condition}
           </span>

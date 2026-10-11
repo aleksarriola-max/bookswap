@@ -77,6 +77,7 @@ export default function BookDetail({ user }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+        {book.isDemo && <div className="rounded-2xl p-4 bg-blue-50 text-blue-800 text-sm">Demo listing · This book and its fictional sharer are here to preview the app. No physical book is offered.</div>}
         {/* Hero: large cover + title */}
         <div className="card p-5 flex gap-5 items-start">
           <BookCover book={book} size="lg" />
@@ -152,7 +153,7 @@ export default function BookDetail({ user }) {
         })()}
 
         {/* How it works */}
-        {!isOwner && book.status === 'available' && !alreadyRequested && (
+        {!book.isDemo && !isOwner && book.status === 'available' && !alreadyRequested && (
           <div className="card p-4 space-y-2.5" style={{ background: 'linear-gradient(135deg, #fdf6ec, #f5ead6)' }}>
             <p className="font-semibold text-warm-800 text-sm" style={{ fontFamily: 'Lora, Georgia, serif' }}>
               How it works 🤝
@@ -263,7 +264,7 @@ export default function BookDetail({ user }) {
 
       {/* CTA */}
       <div className="p-4 bg-cream border-t border-warm-100">
-        {isOwner ? (
+        {book.isDemo ? <p className="text-center text-sm text-warm-600">Preview only · Requests are available on real listings.</p> : isOwner ? (
           <Link to="/my-books" className="btn-secondary w-full flex items-center justify-center gap-2">
             <BookOpen className="w-4 h-4" /> Manage my listings
           </Link>

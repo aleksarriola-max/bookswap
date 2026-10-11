@@ -314,7 +314,7 @@ export const addBook = async args => {
   return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl) });
 };
 export const deleteBook = async bookId => cloudEnabled ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
-export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); return localcreateRequest(args); };
+export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (book?.isDemo) throw new Error('This is a demo listing. Fictional readers cannot receive requests.'); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); return localcreateRequest(args); };
 export const updateRequestStatus = async (requestId, status, journeyNote = '') => cloudEnabled ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
 export const sendMessage = async args => { if (cloudEnabled) return cloudAction('sendMessage', args); const req=getRequests().find(r=>r.id===args.requestId); if (!req || [req.ownerId,req.requesterId].some(id=>isBlocked(id))) throw new Error('Contact is blocked.'); return localsendMessage(args); };
 export const setRequestAvailability = async (requestId, slots) => cloudEnabled ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);

@@ -137,5 +137,14 @@ try {
   assert.ok(matchWish({title:'BOOK A',author:''},bundle)); assert.ok(!matchWish({title:'Book C',author:''},bundle));
   assert.ok(!matchWish({title:'Travel book',author:'Different'},gift));
   assert.equal(monthlyHandoffs([journey]),1);
-  console.log('PASS: migration, group isolation, bundles, private reports, blocking, QR expiry/replay, loans/returns, gift relisting, wishlist matching, monthly challenges.');
+  await db.exec('reset role');
+  await db.exec(await readFile(new URL('../supabase/migrations/003_demo_preview.sql',import.meta.url),'utf8'));
+  const seed=await readFile(new URL('../supabase/demo_seed.sql',import.meta.url),'utf8');
+  await db.exec(seed); await db.exec(seed);
+  assert.equal((await db.query("select count(*)::int as n from public.books where data->>'isDemo'='true'")).rows[0].n,24);
+  await as(reader);
+  await assert.rejects(()=>action('createRequest',{bookId:'db000000-0000-4000-8000-000000000001'}),/demo listing/);
+  await assert.rejects(()=>db.query("select public.bookswap_action_v2('addWish','{}')"),/permission denied/);
+  await action('addWish',{title:'Real wishes still work'});
+  console.log('PASS: exchange lifecycle, demo seed idempotency, demo request protection, private internal RPCs.');
 } finally { await db.close(); }
