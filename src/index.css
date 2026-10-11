@@ -10,6 +10,10 @@
   h1, h2, h3 { font-family: 'Lora', Georgia, serif; }
 }
 
+.neighborhood-map { height: 360px; width: 100%; border-radius: 20px; isolation: isolate; background: #e5e7eb; }
+.book-map-marker { display: grid; place-items: center; background: #fff8ee; border: 2px solid #a65f36; border-radius: 50%; box-shadow: 0 2px 8px #0005; font-size: 20px; }
+.neighborhood-map .leaflet-control-attribution { font-size: 9px; }
+
 @layer components {
   .btn-primary {
     @apply bg-warm-600 hover:bg-warm-700 active:bg-warm-800 text-white font-semibold

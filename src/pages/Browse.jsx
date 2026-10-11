@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
 import { getNearbyBooks, distanceKm, seedDemoData, GENRES, getCommunityStats } from '../store';
 import BookCard from '../components/BookCard';
+import NeighborhoodMap from '../components/NeighborhoodMap';
 
 const CONDITIONS = ['All', 'Like new', 'Good', 'Worn'];
 
@@ -14,6 +15,7 @@ export default function Browse({ user }) {
   const [condition, setCondition] = useState('All');
   const [radius, setRadius] = useState(5);
   const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState('list');
   const [surpriseFlash, setSurpriseFlash] = useState(false);
   const genreScrollRef = useRef(null);
 
@@ -80,6 +82,14 @@ export default function Browse({ user }) {
           </div>
 
           {/* Search */}
+          <div className="flex gap-2 mb-3" aria-label="Browse view">
+            {['list', 'map'].map(value => (
+              <button key={value} aria-pressed={view === value} onClick={() => setView(value)}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold border ${view === value ? 'bg-warm-700 text-white border-warm-700' : 'bg-white text-warm-600 border-warm-200'}`}>
+                {value === 'list' ? 'Book list' : 'Neighborhood map'}
+              </button>
+            ))}
+          </div>
           <div className="relative mb-3">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-400" />
             <input
@@ -163,7 +173,7 @@ export default function Browse({ user }) {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-        {filtered.length === 0 ? (
+        {view === 'map' ? <NeighborhoodMap user={user} books={filtered} radius={radius} /> : filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">📭</div>
             <p className="font-semibold text-warm-700" style={{ fontFamily: 'Lora, Georgia, serif' }}>

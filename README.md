@@ -1,5 +1,18 @@
 # React + Vite
 
+## Neighborhood map
+
+Browse → Neighborhood map shows filtered nearby books on an interactive Leaflet map.
+Satellite is the default; Street switches to OpenStreetMap. Select a book pin to open
+its detail card. Search, genre, condition, and radius apply to both list and map.
+
+The school demo uses Esri's public World Imagery tiles without an API key. Imagery
+requires an internet connection and is not live. Keep the visible provider credits.
+Esri imagery is used under its [noncommercial service terms](https://www.esri.com/en-us/legal/terms/web-site-service).
+Revisit licensing before commercial use. Street tiles follow the
+[OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+Demo book locations are generated near the location chosen during onboarding.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:
