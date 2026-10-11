@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getGroups, getJoinedGroups, getBlocks, getReports, communityAction } from '../store';
 import { useStoreVersion, runAction } from '../lib/cloud';
 import CommunityChallenge from '../components/CommunityChallenge';
+import CommunityDashboard from '../components/CommunityDashboard';
 
 export default function Community() {
   useStoreVersion();
@@ -14,11 +15,13 @@ export default function Community() {
   return <div className="h-full overflow-y-auto p-4 space-y-4">
     <Link to="/" className="text-sm text-warm-600">← Browse</Link>
     <h1 className="text-xl font-bold text-warm-800">Your community 🌱</h1>
+    <CommunityDashboard />
     <CommunityChallenge />
     <section className="card p-4 space-y-3">
       <h2 className="font-bold text-warm-800">Campus & dorm groups</h2>
       <p className="text-xs text-warm-500">Open groups: anyone with an account can join. Group listings appear to members.</p>
       <input className="input" aria-label="Find groups" placeholder="Find your campus or dorm" value={search} onChange={e => setSearch(e.target.value)} />
+      {!getGroups().filter(group => group.name.toLowerCase().includes(search.toLowerCase())).length && <p className="text-sm text-warm-600 rounded-xl bg-warm-50 p-3">{search ? 'No matching groups. Try another name.' : 'Start a reading circle for your campus or dorm.'}</p>}
       {getGroups().filter(group => group.name.toLowerCase().includes(search.toLowerCase())).map(group => {
         const member = joined.some(item => item.id === group.id);
         return <div className="flex items-center gap-2 border-b border-warm-100 pb-2" key={group.id}>
