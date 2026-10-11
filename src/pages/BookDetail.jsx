@@ -1,4 +1,5 @@
 import JourneyTimeline from '../components/JourneyTimeline';
+import {getPersonal,toggleFavorite} from '../lib/personal';
 import ListingSafety from '../components/ListingSafety';
 import { communityAction, canSeeBook } from '../store';
 const JourneyMap = lazy(() => import('../components/JourneyMap'));
@@ -80,6 +81,7 @@ export default function BookDetail({ user }) {
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
         {book.isDemo && <div className="rounded-2xl p-4 bg-blue-50 text-blue-800 text-sm">Demo listing · This book and its fictional sharer are here to preview the app. No physical book is offered.</div>}
         {/* Hero: large cover + title */}
+        <div className="flex gap-2"><button className="btn-secondary flex-1 text-sm" aria-pressed={getPersonal(user.id).favorites.includes(book.id)} onClick={()=>runAction(()=>toggleFavorite(user.id,book.id))}>{getPersonal(user.id).favorites.includes(book.id)?'♥ Saved to favorites':'♡ Save to favorites'}</button><Link className="btn-ghost text-sm" to="/reading">My shelf →</Link></div>
         <div className="card p-5 flex gap-5 items-start">
           <BookCover book={book} size="lg" />
           <div className="flex-1 min-w-0">

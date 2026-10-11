@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const memory=new Map();
+globalThis.localStorage={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};
+const source=(await readFile(new URL('../src/lib/personal.js',import.meta.url),'utf8')).replace("import { notifyStore } from './cloud';",'const notifyStore=()=>{};');
+const {getPersonal,toggleFavorite,saveReading,removeReading,recommendBooks}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+toggleFavorite('alice','a'); assert.deepEqual(getPersonal('alice').favorites,['a']);assert.deepEqual(getPersonal('bob').favorites,[]);
+toggleFavorite('alice','a');assert.deepEqual(getPersonal('alice').favorites,[]);
+saveReading('alice',{title:'Dune',status:'reading',genre:'scifi',pages:10,total:100});
+const entry=getPersonal('alice').reading[0];assert.equal(entry.pages,10);
+assert.throws(()=>saveReading('alice',{...entry,pages:101}),/exceed/);
+saveReading('alice',{...entry,status:'finished',pages:100});assert.equal(getPersonal('alice').reading.length,1);
+const books=[{id:'a',genre:'fiction',ownerId:'bob',status:'available',createdAt:3},{id:'b',genre:'scifi',ownerId:'bob',status:'available',createdAt:1},{id:'c',genre:'scifi',ownerId:'alice',status:'available'},{id:'d',genre:'scifi',ownerId:'bob',status:'gone'}];
+assert.equal(recommendBooks(books,getPersonal('alice'),'alice')[0].book.id,'b');
+toggleFavorite('alice','b');assert.ok(!recommendBooks(books,getPersonal('alice'),'alice').some(item=>item.book.id==='b'));
+removeReading('alice',entry.id);assert.equal(getPersonal('alice').reading.length,0);
+console.log('PASS: account isolation, favorites, reading updates, page validation, and genre recommendations.');

@@ -6,6 +6,7 @@ import { getNearbyBooks, distanceKm, seedDemoData, GENRES, getCommunityStats } f
 import BookCard from '../components/BookCard';
 import WishlistMatches from '../components/WishlistMatches';
 import CommunityChallenge from '../components/CommunityChallenge';
+import PersonalDiscovery from '../components/PersonalDiscovery';
 import { getJoinedGroups } from '../store';
 const NeighborhoodMap = lazy(() => import('../components/NeighborhoodMap'));
 
@@ -188,6 +189,7 @@ export default function Browse({ user }) {
       <div className="px-4 pb-4 space-y-3">
         <WishlistMatches user={user} radius={radius} />
         <CommunityChallenge groupId={groupId} />
+        {view !== 'map' && <PersonalDiscovery books={filtered} user={user} />}
         {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">📭</div>

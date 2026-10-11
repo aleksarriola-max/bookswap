@@ -114,11 +114,17 @@ for Vercel and Supabase before scaling beyond the school demo.
 
 ## Validation
 
+The personal shelf (`/reading`) stores favorites, reading status, page progress,
+and private notes in browser localStorage, scoped to the signed-in account. It
+does not sync across devices. Nearby discovery ranks available listings by genres
+from favorites and the reading tracker; it excludes your own and already saved books.
+
 ```sh
 npm run build
 npm run lint
 npm run test:backend
 npm run test:community
+npm run test:personal
 ```
 
 The embedded Postgres tests run the actual database schema with stand-ins for

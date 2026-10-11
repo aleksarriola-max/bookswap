@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:personal": "node tests/personal.mjs",
     "test:community": "node tests/community.mjs",
     "test:backend": "node tests/backend.mjs",
     "dev": "vite",

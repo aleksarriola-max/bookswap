@@ -8,6 +8,7 @@ import PostBook from './pages/PostBook';
 import Inbox from './pages/Inbox';
 import ChatThread from './pages/ChatThread';
 import MyBooks from './pages/MyBooks';
+import ReadingShelf from './pages/ReadingShelf';
 import Wishlist from './pages/Wishlist';
 import BottomNav from './components/BottomNav';
 import AccountAccess from './components/AccountAccess';
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/messages" element={<Inbox user={user} />} />
             <Route path="/messages/:id" element={<ChatThread user={user} />} />
             <Route path="/my-books" element={<MyBooks user={user} onLogout={handleLogout} />} />
+            <Route path="/reading" element={<ReadingShelf user={user} />} />
             <Route path="/wishlist" element={<Wishlist user={user} />} />
             <Route path="/community" element={<Community />} />
             <Route path="/handoff/:id" element={<Handoff user={user} />} />

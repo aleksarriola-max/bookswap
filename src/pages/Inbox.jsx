@@ -2,7 +2,8 @@ import { useStoreVersion } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, BookOpen, ChevronRight, Clock } from 'lucide-react';
-import { getRequestsForUser, getMessagesForRequest } from '../store';
+import { getRequestsForUser, getMessagesForRequest, getBooks } from '../store';
+import { BookCover } from '../components/BookCard';
 
 const STATUS_STYLES = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -30,6 +31,8 @@ function timeAgo(ts) {
 export default function Inbox({ user }) {
   const dataVersion = useStoreVersion();
   const [requests, setRequests] = useState([]);
+  const [filter,setFilter]=useState('all');
+  const [search,setSearch]=useState('');
 
   useEffect(() => {
     const reqs = getRequestsForUser(user.id);
@@ -38,40 +41,44 @@ export default function Inbox({ user }) {
       const msgs = getMessagesForRequest(r.id);
       return { ...r, lastMessage: msgs[msgs.length - 1] || null };
     });
-    setRequests(enriched.sort((a, b) => b.createdAt - a.createdAt));
+    setRequests(enriched.sort((a, b) => (b.lastMessage?.sentAt || b.createdAt) - (a.lastMessage?.sentAt || a.createdAt)));
   }, [user.id, dataVersion]);
 
   if (requests.length === 0) {
     return (
-      <div className="flex flex-col h-full items-center justify-center text-center p-6 text-gray-400">
+      <div className="h-full overflow-y-auto p-4"><div className="community-hero rounded-3xl p-5 text-white"><h1 className="text-2xl font-bold">Your conversations</h1><p className="text-sm text-white/80 mt-2">A good book is just the start.</p></div><div className="card mt-4 flex flex-col items-center justify-center text-center p-6 text-warm-500">
         <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-25" />
         <p className="font-medium text-gray-500">No messages yet</p>
         <p className="text-sm mt-1">When you request a book or someone requests yours, the conversation will appear here.</p>
         <Link to="/" className="btn-primary inline-block mt-5 text-sm">Browse books</Link>
-      </div>
+      </div></div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
-        <h1 className="text-lg font-bold text-gray-900">Messages</h1>
+      <div className="px-4 py-4 space-y-3">
+        <h1 className="text-xl font-bold text-warm-900">Your conversations</h1>
+        <p className="text-xs text-warm-500">Plan a handoff, keep in touch, return a borrowed read.</p>
+        <input className="input" aria-label="Search conversations" placeholder="Search books or readers" value={search} onChange={e=>setSearch(e.target.value)} />
+        <div className="flex gap-2">{['all','active','completed'].map(value=><button key={value} aria-pressed={filter===value} className={`flex-1 text-xs ${filter===value?'btn-primary':'btn-secondary'}`} onClick={()=>setFilter(value)}>{value==='all'?'All':value==='active'?'Active':'History'}</button>)}</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-        {requests.map((req) => {
+      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+        {!requests.some(req=>(filter==='all' || (filter==='active' ? ['pending','accepted','loaned'].includes(req.status) : ['done','returned','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())) && <p className="card p-5 text-sm text-warm-600">No conversations match these filters.</p>}
+        {requests.filter(req=>(filter==='all' || (filter==='active' ? ['pending','accepted','loaned'].includes(req.status) : ['done','returned','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())).map((req) => {
           const isMine = req.requesterId === user.id;
-          const otherName = isMine ? req.ownerId.startsWith('demo') ? req.bookTitle.split(' ')[0] : 'Owner' : req.requesterName;
+          const book=getBooks().find(book=>book.id===req.bookId);
           return (
             <Link
               key={req.id}
               to={`/messages/${req.id}`}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+              className="card flex items-center gap-3 p-3.5 hover:bg-warm-50 transition-colors"
             >
               {/* Avatar */}
-              <div className="w-11 h-11 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+              {book ? <BookCover book={book} /> : <div className="w-11 h-11 rounded-full bg-warm-100 flex items-center justify-center flex-shrink-0">
                 <BookOpen className="w-5 h-5 text-brand-600" />
-              </div>
+              </div>}
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
@@ -82,13 +89,14 @@ export default function Inbox({ user }) {
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 truncate">
-                  {isMine ? `You requested from owner` : `${req.requesterName} wants this book`}
+                  {isMine ? `From ${book?.ownerName || 'the owner'}` : `${req.requesterName} requested this book`}
                 </p>
                 {req.lastMessage && (
                   <p className="text-xs text-gray-400 truncate mt-0.5">
                     {req.lastMessage.senderName === user.name ? 'You: ' : ''}{req.lastMessage.text}
                   </p>
                 )}
+                {req.status==='loaned' && req.dueAt && <p className="text-xs text-amber-700 mt-1">Return due {new Date(req.dueAt).toLocaleDateString()}</p>}
               </div>
 
               <div className="flex flex-col items-end gap-1.5">

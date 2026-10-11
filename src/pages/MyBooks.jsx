@@ -1,13 +1,12 @@
 import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Plus, LogOut, BookOpen } from 'lucide-react';
-import { getBooks, deleteBook, clearUser, getUserStats, getRepBadge } from '../store';
+import { getBooks, clearUser, getUserStats, getRepBadge } from '../store';
 import BookCard from '../components/BookCard';
 
 export default function MyBooks({ user, onLogout }) {
   const dataVersion = useStoreVersion();
-  const navigate = useNavigate();
   const [myBooks, setMyBooks] = useState([]);
   const [stats, setStats] = useState({ shared: 0, received: 0, active: 0, total: 0 });
 
@@ -27,7 +26,7 @@ export default function MyBooks({ user, onLogout }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-full overflow-y-auto">
       {/* Profile hero */}
       <div className="px-4 pt-5 pb-4 border-b border-warm-100" style={{ background: 'linear-gradient(160deg, #fdf6ec, #f5ead6)' }}>
         <div className="flex items-start justify-between mb-4">
@@ -95,7 +94,8 @@ export default function MyBooks({ user, onLogout }) {
       </div>
 
       {/* Book listings */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="px-4 py-4 space-y-3">
+        <Link className="community-hero rounded-3xl p-5 block text-white" to="/reading"><p className="font-bold text-lg">Your personal bookshelf →</p><p className="text-sm text-white/80 mt-1">Favorites, reading progress, and private notes</p></Link>
         <Link className="card p-4 block text-sm font-semibold text-warm-700" to="/community">🌱 Groups, community challenges & safety settings →</Link>
         {/* Post CTA */}
         <Link to="/post"
@@ -117,7 +117,7 @@ export default function MyBooks({ user, onLogout }) {
         ) : (
           <>
             <p className="text-xs font-semibold text-warm-500 uppercase tracking-wide">My listings</p>
-            {myBooks.map((book) => <BookCard key={book.id} book={book} />)}
+            <div className="grid grid-cols-2 gap-3">{myBooks.map((book) => <BookCard key={book.id} book={book} layout="grid" />)}</div>
           </>
         )}
       </div>
