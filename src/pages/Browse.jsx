@@ -20,7 +20,7 @@ export default function Browse({ user }) {
   const [condition, setCondition] = useState('All');
   const [radius, setRadius] = useState(5);
   const [showFilters, setShowFilters] = useState(false);
-  const [view, setView] = useState('list');
+  const [view, setView] = useState('grid');
   const [groupId, setGroupId] = useState('');
   const [surpriseFlash, setSurpriseFlash] = useState(false);
   const genreScrollRef = useRef(null);
@@ -61,15 +61,17 @@ export default function Browse({ user }) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="text-xl font-bold text-warm-800" style={{ fontFamily: 'Lora, Georgia, serif' }}>
-                Books near you ☕
+                Your neighborhood bookshelf
               </h1>
               <p className="text-xs text-warm-500 flex items-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3" /> {filtered.length} available · {radius} km radius
+                <MapPin className="w-3 h-3" /> {filtered.length} listings · within {radius} km
               </p>
             </div>
             <div className="flex gap-2">
               {/* Surprise Me */}
               <button
+                aria-label="Show filters"
+                aria-expanded={showFilters}
                 onClick={handleSurprise}
                 title="Surprise me!"
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-warm-200 bg-white text-warm-600 hover:bg-warm-50 transition-colors shadow-sm"
@@ -94,10 +96,10 @@ export default function Browse({ user }) {
             <Link className="text-xs text-warm-600 font-semibold" to="/community">Groups</Link>
           </div>
           <div className="flex gap-2 mb-3" aria-label="Browse view">
-            {['list', 'map'].map(value => (
+            {['grid', 'list', 'map'].map(value => (
               <button key={value} aria-pressed={view === value} onClick={() => setView(value)}
                 className={`flex-1 py-2 rounded-xl text-xs font-semibold border ${view === value ? 'bg-warm-700 text-white border-warm-700' : 'bg-white text-warm-600 border-warm-200'}`}>
-                {value === 'list' ? 'Book list' : 'Neighborhood map'}
+                {value === 'grid' ? 'Cover grid' : value === 'list' ? 'Book list' : 'Map'}
               </button>
             ))}
           </div>
@@ -205,12 +207,14 @@ export default function Browse({ user }) {
             <div className="flex items-center gap-2 mt-1 mb-0.5">
               <Sparkles className="w-3.5 h-3.5 text-warm-400" />
               <span className="text-xs font-semibold text-warm-500 uppercase tracking-wide">
-                {genre !== 'all' ? `${GENRES.find(g=>g.id===genre)?.emoji} ${GENRES.find(g=>g.id===genre)?.label}` : 'Recently added'}
+                {genre !== 'all' ? `${GENRES.find(g=>g.id===genre)?.emoji} ${GENRES.find(g=>g.id===genre)?.label}` : 'Discover your next read'}
               </span>
             </div>
-            {filtered.map((book) => (
-              <BookCard key={book.id} book={book} distance={distanceKm(user.lat, user.lng, book.lat, book.lng)} />
-            ))}
+            <div className={view === 'grid' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+              {filtered.map((book) => (
+                <BookCard key={book.id} book={book} layout={view} distance={distanceKm(user.lat, user.lng, book.lat, book.lng)} />
+              ))}
+            </div>
             {/* Wishlist CTA at bottom */}
             <Link to="/wishlist"
               className="flex items-center gap-3 p-3.5 rounded-2xl border border-dashed border-warm-200 bg-warm-50/60 hover:bg-warm-100 transition-colors mt-2"

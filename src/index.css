@@ -13,6 +13,15 @@
 .neighborhood-map { height: 360px; width: 100%; border-radius: 20px; isolation: isolate; background: #e5e7eb; }
 .book-map-marker { display: grid; place-items: center; background: #fff8ee; border: 2px solid #a65f36; border-radius: 50%; box-shadow: 0 2px 8px #0005; font-size: 20px; }
 .neighborhood-map .leaflet-control-attribution { font-size: 9px; }
+.shelf-cover { background: radial-gradient(ellipse at top, #fffaf1, #f0e5d4); border-bottom: 1px solid #e8dbc6; }
+.shelf-cover > div { transform: rotate(-3deg); box-shadow: 6px 9px 12px #57351f26; transition: transform 180ms ease; }
+.book-card { transition: box-shadow 180ms ease, transform 180ms ease; }
+.book-card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px #57351f12; }
+.book-card:hover .shelf-cover > div { transform: rotate(0deg); }
+@media (prefers-reduced-motion: reduce) {
+  .book-card, .shelf-cover > div { transition: none; }
+  .book-card:hover, .book-card:hover .shelf-cover > div { transform: none; }
+}
 
 @layer components {
   .btn-primary {
