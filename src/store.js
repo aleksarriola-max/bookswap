@@ -100,12 +100,16 @@ export const createRequest = ({ bookId, bookTitle, requesterId, requesterName, o
   return req;
 };
 
-export const updateRequestStatus = (requestId, status) => {
+export const updateRequestStatus = (requestId, status, journeyNote = '') => {
   const requests = getRequests().map((r) => r.id === requestId ? { ...r, status } : r);
   write(KEYS.requests, requests);
   const req = requests.find((r) => r.id === requestId);
   if (req) {
-    if (status === 'done') updateBookStatus(req.bookId, 'gone');
+    if (status === 'done') {
+      updateBookStatus(req.bookId, 'gone');
+      // record journey for the receiver
+      addJourneyEntry(req.bookId, { userId: req.requesterId, userName: req.requesterName, note: journeyNote });
+    }
     if (status === 'declined') updateBookStatus(req.bookId, 'available');
   }
 };
@@ -165,6 +169,37 @@ export const confirmSlot = (requestId, slot, spot) => {
     r.id === requestId ? { ...r, confirmedSlot: slot, confirmedSpot: spot } : r
   );
   write(KEYS.requests, requests);
+};
+
+// ── Journey / sticky notes ────────────────────────────────────────────────────
+// Each book carries a `journey` array: [{ userId, userName, note, ts }]
+// added when a handoff is marked done.
+
+export const addJourneyEntry = (bookId, { userId, userName, note }) => {
+  const books = getBooks().map((b) => {
+    if (b.id !== bookId) return b;
+    const journey = b.journey || [];
+    return { ...b, journey: [...journey, { userId, userName, note: note || '', ts: Date.now() }] };
+  });
+  write(KEYS.books, books);
+};
+
+export const addStickyNote = (bookId, { userId, userName, text }) => {
+  const books = getBooks().map((b) => {
+    if (b.id !== bookId) return b;
+    const notes = b.stickyNotes || [];
+    return { ...b, stickyNotes: [...notes, { id: uid(), userId, userName, text, ts: Date.now() }] };
+  });
+  write(KEYS.books, books);
+};
+
+// ── Community stats ───────────────────────────────────────────────────────────
+export const getCommunityStats = (lat, lng, radiusKm = 5) => {
+  const nearby = getBooks().filter((b) => distanceKm(lat, lng, b.lat, b.lng) <= radiusKm);
+  const shared = nearby.filter((b) => b.status === 'gone').length;
+  const available = nearby.filter((b) => b.status === 'available').length;
+  const people = new Set(nearby.map((b) => b.ownerId)).size;
+  return { shared, available, people };
 };
 
 // ── Reputation ────────────────────────────────────────────────────────────────

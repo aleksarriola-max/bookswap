@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Send, CheckCircle, XCircle, QrCode,
-  CalendarDays, MapPin, Clock,
+  ArrowLeft, Send, CheckCircle, XCircle, QrCode, CalendarDays, MapPin,
 } from 'lucide-react';
 import {
   getRequests, getMessagesForRequest, sendMessage, updateRequestStatus,
   setRequestAvailability, confirmSlot, SLOT_LABELS, MEETUP_SPOTS,
 } from '../store';
+import Confetti from '../components/Confetti';
 
 function timeAgo(ts) {
   const mins = Math.floor((Date.now() - ts) / 60000);
@@ -146,6 +146,7 @@ function SlotConfirm({ slots, onConfirm, onClose }) {
 
 // ── QR handoff modal ──────────────────────────────────────────────────────────
 function QRHandoff({ request, onDone, onClose }) {
+  const [note, setNote] = useState('');
   const code = `bookswap:handoff:${request.id}`;
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -154,16 +155,19 @@ function QRHandoff({ request, onDone, onClose }) {
           Handoff QR 📦
         </h3>
         <p className="text-sm text-gray-500">
-          Show this to <strong>{request.requesterName}</strong> when you meet.<br />
-          They scan it to confirm the exchange is done.
+          Show this to <strong>{request.requesterName}</strong> when you meet.
         </p>
         <div className="flex justify-center">
           <FakeQR value={code} />
         </div>
-        <p className="text-xs text-gray-400 font-mono break-all">{code.slice(0, 28)}…</p>
+        <textarea
+          className="w-full border border-warm-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warm-400 resize-none"
+          placeholder="Leave a note for the next reader… (optional)"
+          rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={120}
+        />
         <div className="flex gap-2">
           <button onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
-          <button onClick={() => { onDone(); onClose(); }} className="btn-primary flex-1 text-sm">
+          <button onClick={() => { onDone(note); onClose(); }} className="btn-primary flex-1 text-sm">
             ✅ Confirm done
           </button>
         </div>
@@ -182,6 +186,7 @@ export default function ChatThread({ user }) {
   const [showAvail, setShowAvail] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const bottomRef = useRef(null);
 
   const load = () => {
@@ -224,8 +229,9 @@ export default function ChatThread({ user }) {
     load();
   };
 
-  const handleDone = () => {
-    updateRequestStatus(requestId, 'done');
+  const handleDone = (journeyNote = '') => {
+    updateRequestStatus(requestId, 'done', journeyNote);
+    setShowConfetti(true);
     load();
   };
 
@@ -237,6 +243,9 @@ export default function ChatThread({ user }) {
 
   return (
     <div className="flex flex-col h-full relative">
+      {/* Confetti */}
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
+
       {/* Modals */}
       {showAvail && <AvailabilityPicker onSend={handleSendAvailability} onClose={() => setShowAvail(false)} />}
       {showConfirm && hasAvailability && (

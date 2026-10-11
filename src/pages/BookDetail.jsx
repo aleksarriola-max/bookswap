@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck } from 'lucide-react';
-import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge } from '../store';
+import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote, Route } from 'lucide-react';
+import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge, addStickyNote } from '../store';
 import { BookCover } from '../components/BookCard';
 
 const CONDITION_INFO = {
@@ -16,6 +16,8 @@ export default function BookDetail({ user }) {
   const [book, setBook] = useState(null);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [stickyText, setStickyText] = useState('');
+  const [showStickyForm, setShowStickyForm] = useState(false);
 
   useEffect(() => {
     const b = getBooks().find((b) => b.id === id);
@@ -157,7 +159,84 @@ export default function BookDetail({ user }) {
           </div>
         )}
 
-        {book.status === 'gone' && (
+        {/* Book Journey */}
+        {book.journey && book.journey.length > 0 && (
+          <div className="card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Route className="w-4 h-4 text-warm-500" />
+              <h3 className="font-semibold text-warm-800 text-sm" style={{ fontFamily: 'Lora, Georgia, serif' }}>
+                This book's journey
+              </h3>
+            </div>
+            <div className="relative pl-4">
+              <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-warm-200 rounded" />
+              {[{ userName: book.ownerName, note: 'Listed this book', ts: book.createdAt, isOrigin: true }, ...book.journey].map((entry, i) => (
+                <div key={i} className="relative mb-3 last:mb-0">
+                  <div className="absolute -left-3 top-1 w-2.5 h-2.5 rounded-full border-2 border-warm-400 bg-cream" />
+                  <p className="text-xs font-semibold text-warm-700">{entry.userName}</p>
+                  {entry.note && <p className="text-xs text-gray-500 italic mt-0.5">"{entry.note}"</p>}
+                  <p className="text-xs text-gray-400 mt-0.5">{new Date(entry.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sticky notes */}
+        {book.stickyNotes && book.stickyNotes.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <StickyNote className="w-4 h-4 text-amber-500" />
+              <h3 className="font-semibold text-warm-800 text-sm" style={{ fontFamily: 'Lora, Georgia, serif' }}>
+                Notes from previous readers
+              </h3>
+            </div>
+            {book.stickyNotes.map((n) => (
+              <div key={n.id} className="rounded-2xl p-3.5 border border-amber-100 space-y-1"
+                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}>
+                <p className="text-sm text-amber-900 italic">"{n.text}"</p>
+                <p className="text-xs text-amber-500">— anonymous reader</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Leave a sticky note (only if book is gone or user has it) */}
+        {book.status !== 'available' && (
+          <div className="card p-4 space-y-3">
+            {!showStickyForm ? (
+              <button onClick={() => setShowStickyForm(true)}
+                className="w-full flex items-center justify-center gap-2 text-sm text-amber-700 font-semibold py-2 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors">
+                <StickyNote className="w-4 h-4" /> Leave a note for the next reader
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-warm-600 uppercase tracking-wide block">
+                  Your anonymous note 📝
+                </label>
+                <textarea
+                  className="w-full border border-warm-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warm-400 resize-none"
+                  placeholder="What did you love about this book? A thought, a quote…"
+                  rows={3} value={stickyText} onChange={(e) => setStickyText(e.target.value)} maxLength={200}
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => { setShowStickyForm(false); setStickyText(''); }}
+                    className="btn-secondary flex-1 text-sm">Cancel</button>
+                  <button
+                    disabled={!stickyText.trim()}
+                    onClick={() => {
+                      addStickyNote(book.id, { userId: user.id, userName: user.name, text: stickyText.trim() });
+                      setStickyText(''); setShowStickyForm(false);
+                      setBook(getBooks().find((b) => b.id === id) || book);
+                    }}
+                    className="btn-primary flex-1 text-sm">Post note 📌</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {book.status === 'gone' && !(book.stickyNotes?.length) && !(book.journey?.length) && (
           <div className="card p-4 text-center text-gray-400">
             <div className="text-3xl mb-1">📦</div>
             <p className="text-sm">This book has already been picked up.</p>

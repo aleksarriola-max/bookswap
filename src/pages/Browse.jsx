@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
-import { getNearbyBooks, distanceKm, seedDemoData, GENRES } from '../store';
+import { getNearbyBooks, distanceKm, seedDemoData, GENRES, getCommunityStats } from '../store';
 import BookCard from '../components/BookCard';
 
 const CONDITIONS = ['All', 'Like new', 'Good', 'Worn'];
@@ -143,6 +143,23 @@ export default function Browse({ user }) {
           )}
         </div>
       </div>
+
+      {/* Community stats banner */}
+      {(() => {
+        const stats = getCommunityStats(user.lat, user.lng, radius);
+        if (stats.shared === 0 && stats.people <= 1) return null;
+        return (
+          <div className="mx-4 mb-2 px-4 py-3 rounded-2xl flex items-center gap-3 border border-warm-100"
+            style={{ background: 'linear-gradient(135deg, #fdf6ec, #fde9c9)' }}>
+            <span className="text-2xl flex-shrink-0">📚</span>
+            <p className="text-xs text-warm-700 leading-relaxed">
+              <span className="font-bold">{stats.available} book{stats.available !== 1 ? 's' : ''}</span> available nearby ·{' '}
+              {stats.shared > 0 && <><span className="font-bold">{stats.shared}</span> already passed on · </>}
+              <span className="font-bold">{stats.people}</span> {stats.people === 1 ? 'sharer' : 'sharers'} in your community 🌱
+            </p>
+          </div>
+        );
+      })()}
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
