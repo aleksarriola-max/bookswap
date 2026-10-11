@@ -70,8 +70,6 @@ export default function Browse({ user }) {
             <div className="flex gap-2">
               {/* Surprise Me */}
               <button
-                aria-label="Show filters"
-                aria-expanded={showFilters}
                 onClick={handleSurprise}
                 title="Surprise me!"
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-warm-200 bg-white text-warm-600 hover:bg-warm-50 transition-colors shadow-sm"
@@ -79,6 +77,8 @@ export default function Browse({ user }) {
                 <Shuffle className="w-3.5 h-3.5" /> Surprise me
               </button>
               <button
+                aria-label="Show filters"
+                aria-expanded={showFilters}
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-colors ${
                   showFilters ? 'bg-warm-600 text-white border-warm-600' : 'bg-white text-warm-700 border-warm-200'
