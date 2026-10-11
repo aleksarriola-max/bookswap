@@ -84,8 +84,18 @@ the app; they do not send push notifications or email.
   and rejects contact in both directions. Manage blocks and reports in Community;
   loan returns and declining pending exchanges remain possible after blocking.
 
-For an existing project, apply only migration 002. It preserves existing rows,
-replaces the write entry point, and revokes browser access to the legacy function.
+For an existing project, apply unapplied migrations in order: 002, then 003.
+They preserve existing rows and revoke browser access to internal functions.
+
+## School preview books
+
+After migration 003, run `supabase/demo_seed.sql` in the Supabase SQL Editor as
+the database administrator. First post a listing with your neighborhood location;
+the seed uses that approximate area for 24 sample books from six fictional readers.
+It includes six loan listings, two bundles, and eight sample journey histories.
+The fictional users have no email, password, or login identity. Demo requests are
+disabled in the UI and database, and sample journeys do not count as real handoffs.
+Rerunning the seed creates no duplicates and preserves existing listings.
 
 ## Vercel deployment
 
