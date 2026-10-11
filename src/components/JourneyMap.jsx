@@ -13,7 +13,7 @@ export default function JourneyMap({ book }) {
     L.polyline(locations, { color: '#b86620', weight: 3, dashArray: '6 6' }).addTo(map);
     points.forEach((point, i) => {
       const label = document.createElement('span'); label.textContent = `${i + 1}. ${point.userName} (approximate neighborhood)`;
-      L.circleMarker([point.lat, point.lng], { radius: 7, color: '#b86620', fillOpacity: 0.8 }).bindTooltip(label).addTo(map);
+      L.marker([point.lat, point.lng], {icon:L.divIcon({className:'book-map-marker book-map-cluster',html:`<span>${i+1}</span>`,iconSize:[30,30],iconAnchor:[15,15]})}).bindTooltip(label).addTo(map);
     });
     map.fitBounds(L.latLngBounds(locations).pad(0.2), { maxZoom: 13 });
     const observer = new ResizeObserver(() => map.invalidateSize()); observer.observe(container.current);

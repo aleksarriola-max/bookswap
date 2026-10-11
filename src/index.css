@@ -18,6 +18,10 @@
 .book-card { transition: box-shadow 180ms ease, transform 180ms ease; }
 .book-card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px #57351f12; }
 .book-card:hover .shelf-cover > div { transform: rotate(0deg); }
+.book-map-cluster { background: #85542e; color: white; border: 3px solid #fff8ee; font-size: 15px; font-weight: 700; }
+.journey-timeline { position: relative; }
+.journey-timeline::before { content: ''; position: absolute; left: 14px; top: 15px; bottom: 20px; width: 2px; background: #e8dbc6; }
+.journey-stop { position: absolute; left: 0; top: 4px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 12px; font-weight: bold; border: 3px solid white; }
 @media (prefers-reduced-motion: reduce) {
   .book-card, .shelf-cover > div { transition: none; }
   .book-card:hover, .book-card:hover .shelf-cover > div { transform: none; }

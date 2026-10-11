@@ -1,3 +1,4 @@
+import JourneyTimeline from '../components/JourneyTimeline';
 import ListingSafety from '../components/ListingSafety';
 import { communityAction, canSeeBook } from '../store';
 const JourneyMap = lazy(() => import('../components/JourneyMap'));
@@ -170,28 +171,7 @@ export default function BookDetail({ user }) {
           </div>
         )}
 
-        {/* Book Journey */}
-        {book.journey && book.journey.length > 0 && (
-          <div className="card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Route className="w-4 h-4 text-warm-500" />
-              <h3 className="font-semibold text-warm-800 text-sm" style={{ fontFamily: 'Lora, Georgia, serif' }}>
-                This book's journey
-              </h3>
-            </div>
-            <div className="relative pl-4">
-              <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-warm-200 rounded" />
-              {[{ userName: book.ownerName, note: 'Listed this book', ts: book.createdAt, isOrigin: true }, ...book.journey].map((entry, i) => (
-                <div key={i} className="relative mb-3 last:mb-0">
-                  <div className="absolute -left-3 top-1 w-2.5 h-2.5 rounded-full border-2 border-warm-400 bg-cream" />
-                  <p className="text-xs font-semibold text-warm-700">{entry.userName}</p>
-                  {entry.note && <p className="text-xs text-gray-500 italic mt-0.5">"{entry.note}"</p>}
-                  <p className="text-xs text-gray-400 mt-0.5">{new Date(entry.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {book.journey?.length > 0 && <JourneyTimeline book={book} />}
 
         {/* Sticky notes */}
         {book.stickyNotes && book.stickyNotes.length > 0 && (
@@ -286,3 +266,4 @@ export default function BookDetail({ user }) {
     </div>
   );
 }
+
