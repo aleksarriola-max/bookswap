@@ -47,7 +47,7 @@ export default function Browse({ user }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-full overflow-y-auto">
       {/* Surprise flash overlay */}
       {surpriseFlash && (
         <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -56,7 +56,7 @@ export default function Browse({ user }) {
       )}
 
       {/* Header */}
-      <div className="sticky top-0 z-10" style={{ background: 'linear-gradient(180deg, #fdf6ec 85%, transparent 100%)' }}>
+      <div style={{ background: 'linear-gradient(180deg, #fdf6ec 85%, transparent 100%)' }}>
         <div className="px-4 pt-5 pb-1">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -185,7 +185,7 @@ export default function Browse({ user }) {
       })()}
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+      <div className="px-4 pb-4 space-y-3">
         <WishlistMatches user={user} radius={radius} />
         <CommunityChallenge groupId={groupId} />
         {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
