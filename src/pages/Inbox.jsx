@@ -8,14 +8,14 @@ const STATUS_STYLES = {
   pending: 'bg-yellow-100 text-yellow-700',
   accepted: 'bg-green-100 text-green-700',
   declined: 'bg-red-100 text-red-600',
-  done: 'bg-gray-100 text-gray-500',
+  done: 'bg-gray-100 text-gray-500', loaned:'bg-amber-100 text-amber-700', returned:'bg-green-100 text-green-700',
 };
 
 const STATUS_LABELS = {
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
-  done: 'Done',
+  done: 'Done', loaned:'On loan', returned:'Returned',
 };
 
 function timeAgo(ts) {

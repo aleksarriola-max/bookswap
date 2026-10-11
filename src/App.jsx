@@ -11,6 +11,8 @@ import MyBooks from './pages/MyBooks';
 import Wishlist from './pages/Wishlist';
 import BottomNav from './components/BottomNav';
 import AccountAccess from './components/AccountAccess';
+import Community from './pages/Community';
+import Handoff from './pages/Handoff';
 import { cloudEnabled, supabase, setCloudIdentity, clearCloudCache, refreshCloud, reportError } from './lib/cloud';
 
 export default function App() {
@@ -44,7 +46,7 @@ export default function App() {
     const refresh = () => refreshCloud().then(() => { if (active) { setLoaded(true); setError(''); } }).catch(error => { if (active) reportError(error); });
     refresh();
     const channel = supabase.channel(`community-${session.user.id}`);
-    ['books', 'requests', 'messages', 'wishlist'].forEach(table => channel.on('postgres_changes', { event: '*', schema: 'public', table }, refresh));
+    ['books', 'requests', 'messages', 'wishlist', 'groups', 'group_members', 'blocks', 'reports'].forEach(table => channel.on('postgres_changes', { event: '*', schema: 'public', table }, refresh));
     channel.subscribe();
     const interval = setInterval(refresh, 15000);
     return () => { active = false; clearInterval(interval); supabase.removeChannel(channel); };
@@ -75,6 +77,8 @@ export default function App() {
             <Route path="/messages/:id" element={<ChatThread user={user} />} />
             <Route path="/my-books" element={<MyBooks user={user} onLogout={handleLogout} />} />
             <Route path="/wishlist" element={<Wishlist user={user} />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/handoff/:id" element={<Handoff user={user} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

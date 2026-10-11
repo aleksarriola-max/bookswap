@@ -1,5 +1,8 @@
+import ListingSafety from '../components/ListingSafety';
+import { communityAction, canSeeBook } from '../store';
+const JourneyMap = lazy(() => import('../components/JourneyMap'));
 import { useStoreVersion, runAction } from '../lib/cloud';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote, Route } from 'lucide-react';
 import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge, addStickyNote } from '../store';
@@ -23,7 +26,7 @@ export default function BookDetail({ user }) {
 
   useEffect(() => {
     const b = getBooks().find((b) => b.id === id);
-    setBook(b || null);
+    setBook(b && canSeeBook(b) ? b : null);
     if (b) {
       setAlreadyRequested(!!getRequests().find((r) => r.bookId === b.id && r.requesterId === user.id));
     }
@@ -93,6 +96,14 @@ export default function BookDetail({ user }) {
           </div>
         </div>
 
+        <div className="card p-4 space-y-2">
+          <p className="text-sm font-semibold text-warm-700">{book.exchangeMode === 'loan' ? 'Borrow for ' + (book.loanDays || 14) + ' days' : 'Free to keep'}</p>
+          {book.bundleItems?.length > 0 && <><h3 className="text-sm font-bold">Included in this bundle</h3><ul className="text-sm text-warm-600 list-disc pl-5">{book.bundleItems.map((title,i)=><li key={i}>{title}</li>)}</ul></>}
+          {book.status === 'lent' && <p className="text-sm text-warm-600">Currently on loan.</p>}
+        </div>
+        {book.journey?.length > 0 && <Suspense fallback={<p>Loading journey map…</p>}><JourneyMap book={book} /></Suspense>}
+        {book.status === 'gone' && getRequests().some(r => r.bookId === book.id && r.requesterId === user.id && r.status === 'done' && r.completedAt === book.lastHandoffAt && (r.exchangeMode || 'gift') === 'gift') && <button className="btn-primary w-full" onClick={() => runAction(() => communityAction('relistBook', {bookId:book.id,lat:user.lat,lng:user.lng}))}>Pass this book on →</button>}
+        {!isOwner && <ListingSafety book={book} />}
         {/* Owner card with reputation */}
         {(() => {
           const stats = getUserStats(book.ownerId);
@@ -260,7 +271,7 @@ export default function BookDetail({ user }) {
           <div className="flex items-center justify-center gap-2 text-sage-600 font-semibold py-2.5">
             <CheckCircle className="w-5 h-5" /> Request sent — check Messages
           </div>
-        ) : book.status === 'gone' ? null : (
+        ) : ['gone','lent'].includes(book.status) ? null : (
           <button
             onClick={handleRequest}
             disabled={requesting}

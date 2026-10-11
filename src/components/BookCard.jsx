@@ -60,6 +60,7 @@ export default function BookCard({ book, distance }) {
       <BookCover book={book} size="md" />
 
       <div className="flex-1 min-w-0 py-0.5">
+        <p className="text-xs text-warm-500">{book.exchangeMode === 'loan' ? `Borrow for ${book.loanDays || 14} days` : 'Free to keep'}{book.bundleItems?.length ? ` · ${book.bundleItems.length}-book bundle` : ''}</p>
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2"
             style={{ fontFamily: 'Lora, Georgia, serif' }}>

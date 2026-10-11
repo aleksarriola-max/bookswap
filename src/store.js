@@ -8,6 +8,7 @@ const KEYS = {
   requests: 'bookswap_requests',
   messages: 'bookswap_messages',
   wishlist: 'bookswap_wishlist',
+  groups: 'bookswap_groups', group_members: 'bookswap_members', blocks: 'bookswap_blocks', reports: 'bookswap_reports',
 };
 
 const read = (key, fallback) => {
@@ -55,7 +56,7 @@ export const clearUser = async () => { if (cloudEnabled) { const { error } = awa
 // ── Books ─────────────────────────────────────────────────────────────────────
 export const getBooks = () => read(KEYS.books, []);
 
-const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, ownerId, ownerName, lat, lng }) => {
+const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, ownerId, ownerName, lat, lng, ...options }) => {
   const book = {
     id: uid(), title, author,
     condition,                     // 'Like new' | 'Good' | 'Worn'
@@ -63,6 +64,7 @@ const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, own
     note: note || '',
     imageDataUrl: imageDataUrl || null,
     ownerId, ownerName, lat, lng,
+    ...options,
     status: 'available',           // 'available' | 'requested' | 'gone'
     createdAt: Date.now(),
   };
@@ -80,7 +82,7 @@ const localdeleteBook = (bookId) => {
 
 export const getNearbyBooks = (lat, lng, radiusKm = 5) =>
   getBooks()
-    .filter((b) => b.status !== 'gone' && distanceKm(lat, lng, b.lat, b.lng) <= radiusKm)
+    .filter((b) => ['available','requested'].includes(b.status) && canSeeBook(b) && distanceKm(lat, lng, b.lat, b.lng) <= radiusKm)
     .sort((a, b) => distanceKm(lat, lng, a.lat, a.lng) - distanceKm(lat, lng, b.lat, b.lng));
 
 export const getSurpriseBook = (lat, lng, userId, radiusKm = 5) => {
@@ -93,9 +95,20 @@ export const getSurpriseBook = (lat, lng, userId, radiusKm = 5) => {
 export const getRequests = () => read(KEYS.requests, []);
 
 const localcreateRequest = ({ bookId, bookTitle, requesterId, requesterName, ownerId }) => {
-  if (getRequests().find((r) => r.bookId === bookId && r.requesterId === requesterId)) return null;
+  const existing = getRequests().find((r) => r.bookId === bookId && r.requesterId === requesterId);
+  if (existing) {
+    if (existing.status === 'returned') {
+      const renewed = { ...existing, status: 'pending', createdAt: Date.now() };
+      ['confirmedSlot','confirmedSpot','offeredSlots','completedAt','dueAt','returnedAt'].forEach(key => delete renewed[key]);
+      write(KEYS.requests, getRequests().map(r => r.id === renewed.id ? renewed : r));
+      updateBookStatus(bookId, 'requested'); return renewed;
+    }
+    return existing;
+  }
   const req = {
     id: uid(), bookId, bookTitle, requesterId, requesterName, ownerId,
+    exchangeMode: getBooks().find(b => b.id === bookId)?.exchangeMode || 'gift',
+    loanDays: getBooks().find(b => b.id === bookId)?.loanDays || 14,
     status: 'pending', createdAt: Date.now(),
   };
   write(KEYS.requests, [req, ...getRequests()]);
@@ -294,15 +307,75 @@ export const seedDemoData = (userLat, userLng) => {
 
 // Shared mode uses atomic server actions; demo mode retains its existing local store.
 export const addBook = async args => {
-  if (!cloudEnabled) return localaddBook(args);
+  if (!cloudEnabled) {
+    if (args.exchangeMode==='loan' && (!Number.isInteger(args.loanDays) || args.loanDays<1 || args.loanDays>90)) throw new Error('Choose a loan length of 1–90 days.');
+    return localaddBook(args);
+  }
   return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl) });
 };
 export const deleteBook = async bookId => cloudEnabled ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
-export const createRequest = async args => cloudEnabled ? cloudAction('createRequest', args) : localcreateRequest(args);
+export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); return localcreateRequest(args); };
 export const updateRequestStatus = async (requestId, status, journeyNote = '') => cloudEnabled ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
-export const sendMessage = async args => cloudEnabled ? cloudAction('sendMessage', args) : localsendMessage(args);
+export const sendMessage = async args => { if (cloudEnabled) return cloudAction('sendMessage', args); const req=getRequests().find(r=>r.id===args.requestId); if (!req || [req.ownerId,req.requesterId].some(id=>isBlocked(id))) throw new Error('Contact is blocked.'); return localsendMessage(args); };
 export const setRequestAvailability = async (requestId, slots) => cloudEnabled ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);
 export const confirmSlot = async (requestId, slot, spot) => cloudEnabled ? cloudAction('confirmSlot', { requestId, slot, spot }) : localconfirmSlot(requestId, slot, spot);
 export const addStickyNote = async (bookId, args) => cloudEnabled ? cloudAction('addStickyNote', { bookId, ...args }) : localaddStickyNote(bookId, args);
 export const addWish = async args => cloudEnabled ? cloudAction('addWish', args) : localaddWish(args);
 export const removeWish = async wishId => cloudEnabled ? cloudAction('removeWish', { wishId }) : localremoveWish(wishId);
+
+export const getGroups = () => read(KEYS.groups, []);
+export const getMemberships = () => read(KEYS.group_members, []);
+export const getBlocks = () => read(KEYS.blocks, []).filter(block => block.userId === getUser()?.id);
+export const getReports = () => read(KEYS.reports, []).filter(report => report.reporterId === getUser()?.id);
+export const getJoinedGroups = () => getGroups().filter(group => getMemberships().some(member => member.groupId === group.id && member.userId === getUser()?.id));
+export const isBlocked = targetId => getBlocks().some(block => block.userId === getUser()?.id && block.targetId === targetId);
+export const canSeeBook = book => !isBlocked(book.ownerId) && (book.ownerId === getUser()?.id || !book.groupId || getJoinedGroups().some(group => group.id === book.groupId));
+export async function communityAction(action, args = {}) {
+  if (cloudEnabled) return cloudAction(action, args);
+  const user = getUser();
+  if (!user) throw new Error('Sign in first.');
+  const now = Date.now();
+  const request = getRequests().find(item => item.id === args.requestId);
+  const book = getBooks().find(item => item.id === (args.bookId || request?.bookId));
+  const saveRequest = changes => write(KEYS.requests, getRequests().map(item => item.id === request.id ? {...item,...changes} : item));
+  const saveBook = changes => write(KEYS.books, getBooks().map(item => item.id === book.id ? {...item,...changes} : item));
+  if (action === 'createGroup') {
+    const group = {id:uid(),name:args.name.trim(),creatorId:user.id,createdAt:now};
+    write(KEYS.groups,[...getGroups(),group]);
+    write(KEYS.group_members,[...getMemberships(),{groupId:group.id,userId:user.id}]); return group;
+  }
+  if (action === 'joinGroup' || action === 'leaveGroup') {
+    const rest=getMemberships().filter(item => !(item.groupId===args.groupId && item.userId===user.id));
+    write(KEYS.group_members,action==='joinGroup' ? [...rest,{groupId:args.groupId,userId:user.id}] : rest); return true;
+  }
+  if (action === 'blockUser' || action === 'unblockUser') {
+    const rest=getBlocks().filter(item => !(item.targetId===args.targetId && item.userId===user.id));
+    write(KEYS.blocks,action==='blockUser' ? [...rest,{...args,userId:user.id,createdAt:now}] : rest); return true;
+  }
+  if (action === 'reportBook') {
+    const report={...args,id:uid(),bookTitle:book.title,reporterId:user.id,status:'submitted',createdAt:now};
+    write(KEYS.reports,[report,...getReports()]); return report;
+  }
+  if (action === 'relistBook') {
+    if (!book || book.status!=='gone' || !getRequests().some(r=>r.bookId===book.id && r.requesterId===user.id && r.completedAt===book.lastHandoffAt)) throw new Error('Only the latest gift recipient can pass this book on.');
+    saveBook({status:'available',ownerId:user.id,ownerName:user.name,lat:user.lat,lng:user.lng,groupId:null,createdAt:now}); return true;
+  }
+  if (!request || ![request.ownerId,request.requesterId].includes(user.id)) throw new Error('Conversation not found.');
+  if (action === 'mintHandoff') {
+    if (user.id!==request.ownerId || request.status!=='accepted' || !request.confirmedSlot) throw new Error('Confirm the meetup first.');
+    if (request.handoffExpiresAt > now && request.handoffCode) return request;
+    const updated={...request,handoffCode:crypto.randomUUID(),handoffExpiresAt:now+86400000}; saveRequest(updated); return updated;
+  }
+  if (action === 'completeHandoff') {
+    if (user.id!==request.requesterId || request.status!=='accepted' || args.code!==request.handoffCode || request.handoffExpiresAt<now) throw new Error('Invalid or expired handoff code.');
+    const loan=request.exchangeMode==='loan';
+    saveRequest({status:loan?'loaned':'done',completedAt:now,dueAt:loan?now+request.loanDays*86400000:null,handoffCode:null,handoffExpiresAt:null});
+    saveBook({status:loan?'lent':'gone',originLat:book.originLat??book.lat,originLng:book.originLng??book.lng,lastHandoffAt:now,handoffCount:(book.handoffCount||0)+1,journey:[...(book.journey||[]),{userId:user.id,userName:user.name,note:args.note||'',lat:user.lat,lng:user.lng,ts:now}]});
+    write(KEYS.requests,getRequests().map(r=>r.bookId===book.id && r.id!==request.id && r.status==='pending'?{...r,status:'declined'}:r)); return true;
+  }
+  if (action === 'returnLoan') {
+    if (user.id!==request.ownerId || request.status!=='loaned') throw new Error('Only the lender can confirm a return.');
+    saveRequest({status:'returned',returnedAt:now});saveBook({status:'available'}); return true;
+  }
+  throw new Error('Unknown community action.');
+}

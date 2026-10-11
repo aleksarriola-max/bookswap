@@ -32,7 +32,8 @@ accounts and shared data; sample books are not uploaded or seeded in the databas
 ## Supabase setup
 
 1. Create a free Supabase project.
-2. Run `supabase/schema.sql` once in the project's SQL Editor. The script is for a
+2. Run `supabase/schema.sql`, then `supabase/migrations/002_community_features.sql`
+   once in the project's SQL Editor. The initial script is for a
    new project; its transaction creates the tables, RLS policies, atomic write
    function, a public cover bucket (5 MB limit), and realtime publication entries.
 3. Copy `.env.example` to `.env.local`. Set `VITE_SUPABASE_URL` and
@@ -56,8 +57,35 @@ The app waits for successful writes and surfaces failures without clearing forms
 Signing out does not delete cloud data. Local demo data is kept separate from cloud
 data. Private request data means other users' received-book reputation counts are
 not available; your own counts and public shared-book counts remain available.
-Unused uploaded covers are not automatically removed. Wishlist push/email alerts
-and the simulated QR graphic are existing demo features, not production services.
+Unused uploaded covers are not automatically removed. Wishlist matches appear in
+the app; they do not send push notifications or email.
+
+## Community features
+
+- Wishlist matches use title and optional author, including titles in bundles,
+  within the selected radius. Matches respect groups and blocked readers.
+- Post a bundle of up to 10 book titles as one listing; the whole bundle exchanges
+  together. Gifts are kept; loans last 1–90 days from the verified handoff.
+- Create or join open campus/dorm groups under Groups. Group listings require
+  membership to read or request. These are open groups, not verified school affiliations.
+- After a meetup is confirmed, the owner generates a real QR link. The requester
+  scans it with their phone camera and explicitly confirms receipt while signed in.
+  Codes last 24 hours and are consumed once; old direct completion is disabled.
+- Loan chat shows the return deadline. The lender confirms receipt of the return,
+  making the book available again. A returned loan may be borrowed again.
+- Gift recipients can pass on the same listing. Its journey keeps the original
+  neighborhood and adds each recipient's rounded coordinates. Legacy handoffs
+  without coordinates remain in the written history.
+- Community and group challenges count recorded handoffs this calendar month
+  toward a goal of 50. Bundles count as one handoff, not one per contained title.
+- Report a listing from its detail page. Reports are private to the reporter and
+  project administrator, who reviews them through Supabase's reports table.
+  Reports do not automatically hide listings. Blocking hides a reader's listings
+  and rejects contact in both directions. Manage blocks and reports in Community;
+  loan returns and declining pending exchanges remain possible after blocking.
+
+For an existing project, apply only migration 002. It preserves existing rows,
+replaces the write entry point, and revokes browser access to the legacy function.
 
 ## Vercel deployment
 
@@ -80,6 +108,7 @@ for Vercel and Supabase before scaling beyond the school demo.
 npm run build
 npm run lint
 npm run test:backend
+npm run test:community
 ```
 
 The embedded Postgres tests run the actual database schema with stand-ins for

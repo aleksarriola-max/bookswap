@@ -4,6 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
 import { getNearbyBooks, distanceKm, seedDemoData, GENRES, getCommunityStats } from '../store';
 import BookCard from '../components/BookCard';
+import WishlistMatches from '../components/WishlistMatches';
+import CommunityChallenge from '../components/CommunityChallenge';
+import { getJoinedGroups } from '../store';
 const NeighborhoodMap = lazy(() => import('../components/NeighborhoodMap'));
 
 const CONDITIONS = ['All', 'Like new', 'Good', 'Worn'];
@@ -18,6 +21,7 @@ export default function Browse({ user }) {
   const [radius, setRadius] = useState(5);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState('list');
+  const [groupId, setGroupId] = useState('');
   const [surpriseFlash, setSurpriseFlash] = useState(false);
   const genreScrollRef = useRef(null);
 
@@ -31,7 +35,7 @@ export default function Browse({ user }) {
     const matchSearch = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.ownerName.toLowerCase().includes(q);
     const matchGenre = genre === 'all' || b.genre === genre;
     const matchCond = condition === 'All' || b.condition === condition;
-    return matchSearch && matchGenre && matchCond && b.ownerId !== user.id;
+    return matchSearch && matchGenre && matchCond && (!groupId || b.groupId === groupId) && b.ownerId !== user.id;
   });
 
   const handleSurprise = () => {
@@ -84,6 +88,10 @@ export default function Browse({ user }) {
           </div>
 
           {/* Search */}
+          <div className="flex gap-2 mb-2 items-center">
+            <select className="input text-xs" aria-label="Filter by group" value={groupId} onChange={e => setGroupId(e.target.value)}><option value="">All my neighborhoods</option>{getJoinedGroups().map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
+            <Link className="text-xs text-warm-600 font-semibold" to="/community">Groups</Link>
+          </div>
           <div className="flex gap-2 mb-3" aria-label="Browse view">
             {['list', 'map'].map(value => (
               <button key={value} aria-pressed={view === value} onClick={() => setView(value)}
@@ -175,6 +183,8 @@ export default function Browse({ user }) {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+        <WishlistMatches user={user} radius={radius} />
+        <CommunityChallenge groupId={groupId} />
         {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">📭</div>

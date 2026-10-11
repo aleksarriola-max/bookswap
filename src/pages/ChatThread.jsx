@@ -1,3 +1,5 @@
+import HandoffQR from '../components/HandoffQR';
+import { communityAction, isBlocked } from '../store';
 import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -18,31 +20,6 @@ function timeAgo(ts) {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
-}
-
-// ── Mini QR visual (CSS-only, no library needed) ──────────────────────────────
-function FakeQR({ value }) {
-  // Deterministic pixel grid from string hash
-  const grid = [];
-  let h = 0;
-  for (let i = 0; i < value.length; i++) h = value.charCodeAt(i) + ((h << 5) - h);
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const on = ((h >> ((r * 9 + c) % 31)) & 1) === 1;
-      // Force finder patterns (corners)
-      const corner =
-        (r < 3 && c < 3) || (r < 3 && c > 5) || (r > 5 && c < 3);
-      grid.push(corner || on);
-    }
-  }
-  return (
-    <div className="inline-grid gap-px p-2 bg-white rounded-xl shadow-lg border border-warm-100"
-      style={{ gridTemplateColumns: 'repeat(9, 12px)' }}>
-      {grid.map((on, i) => (
-        <div key={i} className={`w-3 h-3 rounded-sm ${on ? 'bg-gray-900' : 'bg-white'}`} />
-      ))}
-    </div>
-  );
 }
 
 // ── Availability picker modal ─────────────────────────────────────────────────
@@ -148,38 +125,6 @@ function SlotConfirm({ slots, onConfirm, onClose, user }) {
   );
 }
 
-// ── QR handoff modal ──────────────────────────────────────────────────────────
-function QRHandoff({ request, onDone, onClose }) {
-  const [note, setNote] = useState('');
-  const code = `bookswap:handoff:${request.id}`;
-  return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-3xl p-6 w-full max-w-xs text-center space-y-4">
-        <h3 className="font-bold text-warm-800 text-lg" style={{ fontFamily: 'Lora, Georgia, serif' }}>
-          Handoff QR 📦
-        </h3>
-        <p className="text-sm text-gray-500">
-          Show this to <strong>{request.requesterName}</strong> when you meet.
-        </p>
-        <div className="flex justify-center">
-          <FakeQR value={code} />
-        </div>
-        <textarea
-          className="w-full border border-warm-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-warm-400 resize-none"
-          placeholder="Leave a note for the next reader… (optional)"
-          rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={120}
-        />
-        <div className="flex gap-2">
-          <button onClick={onClose} className="btn-secondary flex-1 text-sm">Cancel</button>
-          <button onClick={async () => { if (await onDone(note)) onClose(); }} className="btn-primary flex-1 text-sm">
-            ✅ Confirm done
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main ChatThread ───────────────────────────────────────────────────────────
 export default function ChatThread({ user }) {
   const dataVersion = useStoreVersion();
@@ -192,6 +137,8 @@ export default function ChatThread({ user }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60000); return () => clearInterval(timer); }, []);
   const bottomRef = useRef(null);
 
   const load = () => {
@@ -211,7 +158,8 @@ export default function ChatThread({ user }) {
   );
 
   const isOwner = request.ownerId === user.id;
-  const isClosed = request.status === 'declined' || request.status === 'done';
+  const blocked = isBlocked(isOwner ? request.requesterId : request.ownerId);
+  const isClosed = ['declined','done','returned'].includes(request.status) || blocked;
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -233,10 +181,6 @@ export default function ChatThread({ user }) {
     await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: '✅ Confirmed: ' + label + ' at ' + spot });
     load(); return true;
   });
-  const handleDone = (journeyNote = '') => runAction(async () => {
-    await updateRequestStatus(requestId, 'done', journeyNote);
-    setShowConfetti(true); load(); return true;
-  });
   const handleAccept = () => runAction(async () => { await updateRequestStatus(requestId, 'accepted'); load(); });
   const handleDecline = () => runAction(async () => { await updateRequestStatus(requestId, 'declined'); load(); });
 
@@ -253,7 +197,7 @@ export default function ChatThread({ user }) {
       {showConfirm && hasAvailability && (
         <SlotConfirm user={user} slots={request.offeredSlots} onConfirm={handleConfirmSlot} onClose={() => setShowConfirm(false)} />
       )}
-      {showQR && <QRHandoff request={request} onDone={handleDone} onClose={() => setShowQR(false)} />}
+      {showQR && <HandoffQR request={request} onClose={() => setShowQR(false)} />}
 
       {/* Header */}
       <div className="px-4 py-3 flex items-center gap-2 sticky top-0 z-10 border-b border-warm-100" style={{ background: '#fdf6ec' }}>
@@ -271,6 +215,9 @@ export default function ChatThread({ user }) {
         </Link>
       </div>
 
+      {blocked && <p className="bg-red-50 p-3 text-xs text-red-700">Contact is blocked. Manage blocked readers in Community. Loan returns can still be confirmed.</p>}
+      {request.status === 'loaned' && <div className="p-3 bg-amber-50 text-sm text-warm-700 space-y-2"><p>{request.dueAt < clock ? 'Return overdue' : 'On loan'} · Return by {new Date(request.dueAt).toLocaleDateString()}</p>{isOwner && <button className="btn-primary text-xs" onClick={() => runAction(() => communityAction('returnLoan',{requestId}))}>I received the returned book</button>}</div>}
+      {request.status === 'returned' && <p className="p-3 text-sm text-sage-700">Loan returned — thank you!</p>}
       {/* Status banners */}
       {request.status === 'pending' && (
         isOwner ? (

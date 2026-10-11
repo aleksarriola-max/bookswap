@@ -96,6 +96,7 @@ export default function MyBooks({ user, onLogout }) {
 
       {/* Book listings */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <Link className="card p-4 block text-sm font-semibold text-warm-700" to="/community">🌱 Groups, community challenges & safety settings →</Link>
         {/* Post CTA */}
         <Link to="/post"
           className="card p-4 flex items-center gap-3 border-dashed border-2 border-warm-200 hover:border-warm-400 hover:bg-warm-50 transition-colors">

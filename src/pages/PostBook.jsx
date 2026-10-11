@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, X, BookOpen, ArrowLeft } from 'lucide-react';
-import { addBook, GENRES } from '../store';
+import { addBook, GENRES, getJoinedGroups } from '../store';
 import BookLookup from '../components/BookLookup';
 import { runAction } from '../lib/cloud';
 
@@ -17,6 +17,10 @@ export default function PostBook({ user }) {
   const [imageDataUrl, setImageDataUrl] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [exchangeMode, setExchangeMode] = useState('gift');
+  const [loanDays, setLoanDays] = useState(14);
+  const [bundle, setBundle] = useState('');
+  const [groupId, setGroupId] = useState('');
 
   const handlePhoto = (e) => {
     const file = e.target.files[0];
@@ -30,6 +34,7 @@ export default function PostBook({ user }) {
     const errs = {};
     if (!title.trim()) errs.title = 'Title is required';
     if (!author.trim()) errs.author = 'Author is required';
+    if (bundle.split('\n').filter(line => line.trim()).length > 10) errs.bundle = 'A bundle can contain up to 10 books.';
     return errs;
   };
 
@@ -42,6 +47,7 @@ export default function PostBook({ user }) {
       await addBook({
         title: title.trim(), author: author.trim(), condition, genre,
         note: note.trim(), imageDataUrl,
+        exchangeMode, loanDays, groupId: groupId || null, bundleItems: bundle.split('\n').map(line => line.trim()).filter(Boolean),
         ownerId: user.id, ownerName: user.name,
         lat: user.lat + (Math.random() - 0.5) * 0.002,
         lng: user.lng + (Math.random() - 0.5) * 0.002,
@@ -64,6 +70,20 @@ export default function PostBook({ user }) {
 
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <BookLookup onSelect={book => { setTitle(book.title); setAuthor(book.author); if (book.cover) setImageDataUrl(book.cover); setErrors({}); }} />
+        <div className="card p-4 space-y-3">
+          <label className="block text-sm font-semibold text-warm-700">Give or lend?
+            <select className="input mt-1" value={exchangeMode} onChange={e => setExchangeMode(e.target.value)}><option value="gift">Gift — theirs to keep</option><option value="loan">Loan — return it later</option></select>
+          </label>
+          {exchangeMode === 'loan' && <label className="block text-sm text-warm-700">Loan length (days)<input className="input mt-1" type="number" min={1} max={90} value={loanDays} onChange={e => setLoanDays(Number(e.target.value))} /></label>}
+          <label className="block text-sm text-warm-700">Bundle titles (optional, one per line)
+            <textarea className="input mt-1" placeholder="List every book included in this bundle" rows={3} value={bundle} onChange={e => setBundle(e.target.value)} />
+          </label>
+          {errors.bundle && <p role="alert" className="text-xs text-red-600">{errors.bundle}</p>}
+          <p className="text-xs text-warm-500">Use the main title to name your bundle. All included books exchange together.</p>
+          <label className="block text-sm text-warm-700">Share with
+            <select className="input mt-1" value={groupId} onChange={e => setGroupId(e.target.value)}><option value="">Everyone nearby</option>{getJoinedGroups().map(group => <option value={group.id} key={group.id}>{group.name}</option>)}</select>
+          </label>
+        </div>
         {/* Photo */}
         <div className="card p-4">
           <label className="text-sm font-semibold text-warm-700 mb-2 block">Cover photo (optional)</label>

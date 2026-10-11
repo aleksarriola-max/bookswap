@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookHeart, Trash2, Plus, Bell } from 'lucide-react';
 import { getMyWishes, addWish, removeWish, GENRES } from '../store';
+import WishlistMatches from '../components/WishlistMatches';
 
 export default function Wishlist({ user }) {
   const dataVersion = useStoreVersion();
@@ -48,6 +49,7 @@ export default function Wishlist({ user }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <WishlistMatches user={user} />
         {/* How it works */}
         <div className="rounded-2xl p-4 flex gap-3 items-start text-sm"
           style={{ background: 'linear-gradient(135deg, #fdf6ec, #f5ead6)', border: '1px solid #e9d8bb' }}>
