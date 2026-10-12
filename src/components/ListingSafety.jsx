@@ -13,7 +13,7 @@ export default function ListingSafety({ book }) {
   return <section className="card p-3 space-y-3">
     <div className="flex gap-2"><button className="btn-secondary text-xs flex-1" onClick={() => setOpen(!open)}>Report listing</button>
       <button className="btn-secondary text-xs flex-1" disabled={busy} onClick={async () => {
-        if (!window.confirm(`Block ${book.ownerName}? Their listings will be hidden and new contact will stop. Existing loan returns can still be confirmed.`)) return;
+        if (!window.confirm(`Block ${book.ownerName}? Their listings will be hidden and new contact will stop.`)) return;
         setBusy(true); const saved = await runAction(() => communityAction('blockUser', { targetId: book.ownerId, targetName: book.ownerName })); setBusy(false); if (saved) navigate('/');
       }}>Block reader</button></div>
     {open && <form className="space-y-2" onSubmit={async e => {

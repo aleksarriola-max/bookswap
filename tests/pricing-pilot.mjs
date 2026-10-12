@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {summarize} from '../scripts/summarize-pricing-pilot.mjs';
+const offers=[1,2,3,4,5].map((item,i)=>({seller:`seller-${i}`,item,shipping:2}));
+assert.deepEqual(summarize(offers),{status:'research-sample',sellerCount:5,q25:2,median:3,q75:4});
+assert.equal(summarize(offers,true).median,5);
+assert.equal(summarize([...offers,offers[0]]).sellerCount,5);
+assert.equal(summarize(offers.slice(0,4)).status,'insufficient');
+assert.equal(summarize([{seller:'bad',item:NaN},...offers]).sellerCount,5);
+assert.equal(summarize(offers.map(offer=>({...offer,shipping:undefined})),true).status,'insufficient');
+console.log('PASS: quartiles, shipping, seller deduplication, invalid offers, and insufficient samples.');

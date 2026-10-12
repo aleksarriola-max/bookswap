@@ -53,11 +53,14 @@ begin
       'imageDataUrl','https://covers.openlibrary.org/b/isbn/'||(item->>3)||'-M.jpg?default=false',
       'condition',(array['Like new','Good','Worn'])[((i-1)%3)+1],
       'status',case when i in (5,13) then 'requested' else 'available' end,
-      'exchangeMode',case when i%4=0 then 'loan' else 'gift' end,'loanDays',case when i%8=0 then 7 else 14 end,
+      'exchangeMode',case when i%4=0 then 'exchange' else 'sale' end,
+      'askPrice',case when i%4=0 then null else round((4+i%9)::numeric,2) end,
+      'exchangeWanted',case when i%4=0 then 'Mystery, fantasy, or make an offer' else '' end,
+      'isbn',item->>3,'format',case when i%2=0 then 'hardcover' else 'softcover' end,'conditionChecks','{}'::jsonb,'photoUrls','[]'::jsonb,
       'lat',lat+offsets[((i-1)%8)+1],'lng',lng+offsets[((i+2)%8)+1],
       'originLat',lat,'originLng',lng,'createdAt',ts-i*3600000::bigint,
       'isDemo',true,'demoSeed','ctrl-us-v1',
-      'note',(array['Loved this one—ready for another reader.','A few pencil notes, plenty of story left.','Perfect for a weekend read.','Please return after enjoying it.'])[((i-1)%4)+1],
+      'note',(array['Loved this one—ready for another reader.','A few pencil notes, plenty of story left.','Perfect for a weekend read.','Open to exchanging for another great read.'])[((i-1)%4)+1],
       'bundleItems',case when i=6 then jsonb_build_array('The Hobbit','The Fellowship of the Ring','The Two Towers') when i=8 then jsonb_build_array('The Very Hungry Caterpillar','Brown Bear, Brown Bear, What Do You See?') else '[]'::jsonb end,
       'journey',case when i%3=0 then jsonb_build_array(
         jsonb_build_object('userName','Casey (demo)','note','Sample stop: a rainy-day favorite.','ts',ts-172800000,'lat',lat+0.01,'lng',lng-0.01),
@@ -67,6 +70,6 @@ begin
   end loop;
 end $$;
 commit;
-select count(*) as demo_books, count(*) filter(where data->>'exchangeMode'='loan') as sample_loans,
+select count(*) as demo_books, count(*) filter(where data->>'exchangeMode'='exchange') as sample_exchanges,
   count(*) filter(where jsonb_array_length(data->'bundleItems')>0) as sample_bundles
 from public.books where data->>'demoSeed'='ctrl-us-v1';

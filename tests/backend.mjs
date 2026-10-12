@@ -139,6 +139,10 @@ try {
   assert.equal(monthlyHandoffs([journey]),1);
   await db.exec('reset role');
   await db.exec(await readFile(new URL('../supabase/migrations/003_demo_preview.sql',import.meta.url),'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/004_marketplace.sql',import.meta.url),'utf8'));
+  const migratedBooks=(await db.query('select data from public.books')).rows.map(row=>row.data);
+  assert.ok(migratedBooks.every(data=>data.exchangeMode==='exchange'));
+  assert.ok((await db.query("select count(*)::int as n from public.requests where data->>'status' in ('loaned','returned')")).rows[0].n===0);
   const seed=await readFile(new URL('../supabase/demo_seed.sql',import.meta.url),'utf8');
   await db.exec(seed); await db.exec(seed);
   assert.equal((await db.query("select count(*)::int as n from public.books where data->>'isDemo'='true'")).rows[0].n,24);
@@ -146,5 +150,26 @@ try {
   await assert.rejects(()=>action('createRequest',{bookId:'db000000-0000-4000-8000-000000000001'}),/demo listing/);
   await assert.rejects(()=>db.query("select public.bookswap_action_v2('addWish','{}')"),/permission denied/);
   await action('addWish',{title:'Real wishes still work'});
+  await as(owner);
+  await assert.rejects(()=>action('addBook',{title:'Bad price',author:'Author',condition:'Good',genre:'fiction',lat:42,lng:-71,exchangeMode:'sale',askPrice:0}),/asking price/);
+  const sale=await action('addBook',{title:'Fair price test',author:'Writer',condition:'Good',genre:'fiction',lat:42.36,lng:-71.06,exchangeMode:'sale',askPrice:12.5,isbn:'9780000000002',format:'softcover',conditionChecks:{writing:true},photoUrls:['https://example.org/spine.jpg']});
+  assert.equal(sale.exchangeMode,'sale'); assert.equal(sale.askPrice,12.5); assert.equal(sale.photoUrls.length,1); assert.equal(sale.conditionChecks.writing,true);
+  await as(reader);
+  const saleReq=await action('createRequest',{bookId:sale.id}); assert.equal(saleReq.askPrice,12.5); assert.equal(saleReq.exchangeMode,'sale');
+  await as(owner); await action('updateRequestStatus',{requestId:saleReq.id,status:'accepted'});
+  await as(reader); await action('setRequestAvailability',{requestId:saleReq.id,slots:['sat']});
+  await as(owner); await action('confirmSlot',{requestId:saleReq.id,slot:'sat',spot:'Library'}); const saleCode=await action('mintHandoff',{requestId:saleReq.id});
+  await as(reader); await assert.rejects(()=>action('completeHandoff',{requestId:saleReq.id,code:saleCode.handoffCode,lat:42.37,lng:-71.05}),/agreed sale price/);
+  await action('completeHandoff',{requestId:saleReq.id,code:saleCode.handoffCode,lat:42.37,lng:-71.05,agreedPrice:10});
+  const saleData=(await db.query('select data from public.requests where id=$1',[saleReq.id])).rows[0].data;
+  const saleBook=(await db.query('select data from public.books where id=$1',[sale.id])).rows[0].data;
+  assert.equal(saleData.agreedPrice,10); assert.equal(saleData.status,'done'); assert.equal(saleBook.journey[0].transactionType,'sale'); assert.equal(saleBook.journey[0].agreedPrice,10);
+  await assert.rejects(()=>action('returnLoan',{requestId:saleReq.id}),/Borrowing is not supported/);
+  await as(owner);
+  const swap=await action('addBook',{title:'Swap test',author:'Writer',condition:'Good',genre:'fiction',lat:42.36,lng:-71.06,exchangeMode:'exchange',exchangeWanted:'A mystery novel'});
+  await as(reader);
+  await assert.rejects(()=>action('createRequest',{bookId:swap.id}),/Describe the book/);
+  const swapReq=await action('createRequest',{bookId:swap.id,requesterOffer:'The Westing Game'});
+  assert.equal(swapReq.requesterOffer,'The Westing Game'); assert.equal(swapReq.exchangeMode,'exchange');
   console.log('PASS: exchange lifecycle, demo seed idempotency, demo request protection, private internal RPCs.');
 } finally { await db.close(); }

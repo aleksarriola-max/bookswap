@@ -1,4 +1,4 @@
-import { useStoreVersion } from '../lib/cloud';
+import { cloudEnabled, useStoreVersion } from '../lib/cloud';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
@@ -16,6 +16,7 @@ export default function Browse({ user }) {
   const dataVersion = useStoreVersion();
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
+  const [showSchoolPreview, setShowSchoolPreview] = useState(!cloudEnabled);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('all');
   const [condition, setCondition] = useState('All');
@@ -24,6 +25,7 @@ export default function Browse({ user }) {
   const [view, setView] = useState('grid');
   const [groupId, setGroupId] = useState('');
   const [surpriseFlash, setSurpriseFlash] = useState(false);
+  const [surpriseStatus, setSurpriseStatus] = useState('');
   const genreScrollRef = useRef(null);
 
   useEffect(() => {
@@ -31,7 +33,8 @@ export default function Browse({ user }) {
     setBooks(getNearbyBooks(user.lat, user.lng, radius));
   }, [user, radius, dataVersion]);
 
-  const filtered = books.filter((b) => {
+  const modeBooks = books.filter(book => Boolean(book.isDemo) === showSchoolPreview);
+  const filtered = modeBooks.filter((b) => {
     const q = search.toLowerCase();
     const matchSearch = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.ownerName.toLowerCase().includes(q);
     const matchGenre = genre === 'all' || b.genre === genre;
@@ -40,9 +43,14 @@ export default function Browse({ user }) {
   });
 
   const handleSurprise = () => {
-    const pool = books.filter((b) => b.ownerId !== user.id && b.status !== 'gone');
-    if (!pool.length) return;
+    const pool = modeBooks.filter((b) => b.ownerId !== user.id && b.status !== 'gone');
+    if (!pool.length) {
+      setSurpriseStatus('No books to pick from nearby. Try School preview or widen your search radius.');
+      setShowFilters(true);
+      return;
+    }
     const pick = pool[Math.floor(Math.random() * pool.length)];
+    setSurpriseStatus('');
     setSurpriseFlash(true);
     setTimeout(() => { setSurpriseFlash(false); navigate(`/book/${pick.id}`); }, 400);
   };
@@ -89,9 +97,10 @@ export default function Browse({ user }) {
               </button>
             </div>
           </div>
+          {surpriseStatus && <p role="status" className="mb-2 text-xs text-warm-700">{surpriseStatus}</p>}
 
           {/* Search */}
-          {books.some(book => book.isDemo) && <p className="text-xs text-blue-800 bg-blue-50 rounded-xl p-2 mb-2">School preview: Demo labels mark sample books and fictional sharers.</p>}
+          {books.some(book => book.isDemo) && <div className="mb-2 rounded-xl border border-blue-100 bg-blue-50 p-2.5"><p className="text-xs text-blue-900 mb-2">School preview books are fictional and kept separate from real listings.</p><div className="grid grid-cols-2 gap-2"><button type="button" aria-pressed={!showSchoolPreview} onClick={() => setShowSchoolPreview(false)} className={`rounded-lg py-2 text-xs font-semibold ${!showSchoolPreview ? 'bg-white text-warm-800 shadow-sm' : 'text-blue-800'}`}>Real listings ({books.filter(book => !book.isDemo).length})</button><button type="button" aria-pressed={showSchoolPreview} onClick={() => setShowSchoolPreview(true)} className={`rounded-lg py-2 text-xs font-semibold ${showSchoolPreview ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-800'}`}>School preview ({books.filter(book => book.isDemo).length})</button></div></div>}
           <div className="flex gap-2 mb-2 items-center">
             <select className="input text-xs" aria-label="Filter by group" value={groupId} onChange={e => setGroupId(e.target.value)}><option value="">All my neighborhoods</option>{getJoinedGroups().map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
             <Link className="text-xs text-warm-600 font-semibold" to="/community">Groups</Link>
@@ -187,7 +196,7 @@ export default function Browse({ user }) {
 
       {/* List */}
       <div className="px-4 pb-4 space-y-3">
-        <WishlistMatches user={user} radius={radius} />
+        <WishlistMatches user={user} radius={radius} showDemo={showSchoolPreview} />
         <CommunityChallenge groupId={groupId} />
         {view !== 'map' && <PersonalDiscovery books={filtered} user={user} />}
         {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
@@ -224,7 +233,7 @@ export default function Browse({ user }) {
               <BookHeart className="w-5 h-5 text-warm-500 flex-shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-warm-700">Can't find what you want?</p>
-                <p className="text-xs text-warm-500">Add it to your wishlist — we'll notify you when it appears nearby.</p>
+                <p className="text-xs text-warm-500">Add it to your wishlist and check back for nearby matches.</p>
               </div>
             </Link>
           </>

@@ -7,13 +7,14 @@ export async function searchBooks(query, signal) {
   const q = query.trim();
   if (q.length < 3) return [];
   if (bookCache.has(q)) return bookCache.get(q);
-  const params = new URLSearchParams({ q, limit: '6', fields: 'key,title,author_name,cover_i,first_publish_year' });
+  const params = new URLSearchParams({ q, limit: '6', fields: 'key,title,author_name,cover_i,first_publish_year,isbn,edition_key' });
   const response = await fetch(`https://openlibrary.org/search.json?${params}`, { signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
   if (!response.ok) throw new Error('Book lookup is unavailable. You can still enter the details yourself.');
   const data = await response.json();
   const results = (data.docs || []).map(book => ({
     id: book.key, title: book.title, author: (book.author_name || []).join(', '),
     year: book.first_publish_year,
+    isbn: (book.isbn || []).find(value => /^\d{13}$/.test(value)) || '',
     cover: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg?default=false` : null,
   }));
   bookCache.set(q, results);

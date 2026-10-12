@@ -55,7 +55,7 @@ export default function Wishlist({ user }) {
           style={{ background: 'linear-gradient(135deg, #fdf6ec, #f5ead6)', border: '1px solid #e9d8bb' }}>
           <Bell className="w-4 h-4 text-warm-500 flex-shrink-0 mt-0.5" />
           <p className="text-warm-700 leading-relaxed">
-            Add books you're looking for. When someone nearby posts a match, you'll be the first to know.
+            Add books you're looking for. Check here for nearby matches when you open or refresh Ctrl+Us.
           </p>
         </div>
 

@@ -6,7 +6,7 @@ const JourneyMap = lazy(() => import('../components/JourneyMap'));
 import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, MessageCircle, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote, Route } from 'lucide-react';
+import { ArrowLeft, MapPin, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote } from 'lucide-react';
 import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge, addStickyNote } from '../store';
 import { BookCover } from '../components/BookCard';
 
@@ -23,6 +23,7 @@ export default function BookDetail({ user }) {
   const [book, setBook] = useState(null);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [requesterOffer, setRequesterOffer] = useState('');
   const [stickyText, setStickyText] = useState('');
   const [showStickyForm, setShowStickyForm] = useState(false);
 
@@ -51,6 +52,7 @@ export default function BookDetail({ user }) {
     const req = await runAction(() => createRequest({
       bookId: book.id, bookTitle: book.title,
       requesterId: user.id, requesterName: user.name, ownerId: book.ownerId,
+      requesterOffer: requesterOffer.trim(),
     }));
       setRequesting(false);
       if (req) navigate(`/messages/${req.id}`);
@@ -100,13 +102,17 @@ export default function BookDetail({ user }) {
           </div>
         </div>
 
+        {(book.photoUrls || []).length > 0 && <div className="card p-4"><h3 className="font-semibold text-sm text-warm-800 mb-3">More photos</h3><div className="flex gap-2 overflow-x-auto">{book.photoUrls.map((photo, index) => <img key={photo} src={photo} alt={`Book condition detail ${index + 1}`} className="w-24 h-32 object-cover rounded-xl flex-shrink-0" loading="lazy" />)}</div></div>}
+
         <div className="card p-4 space-y-2">
-          <p className="text-sm font-semibold text-warm-700">{book.exchangeMode === 'loan' ? 'Borrow for ' + (book.loanDays || 14) + ' days' : 'Free to keep'}</p>
+          <p className="text-sm font-semibold text-warm-700">{book.exchangeMode === 'sale' ? `For sale · $${Number(book.askPrice || 0).toFixed(2)}` : 'Book exchange'}</p>
+          {book.exchangeMode === 'exchange' && <p className="text-sm text-warm-600">Looking for: {book.exchangeWanted || 'Open to book offers'}</p>}
+          {book.isbn && <p className="text-xs text-warm-500">ISBN {book.isbn}{book.format ? ` · ${book.format}` : ''}</p>}
+          {book.conditionChecks && <div className="text-xs text-warm-600"><p className="font-semibold">Condition details</p><p>{Object.entries(book.conditionChecks).filter(([, value]) => value).map(([key]) => ({ writing:'Writing/highlights',coverWear:'Cover wear',spineWear:'Creased spine',looseBinding:'Loose binding',waterDamage:'Water damage',missingPages:'Missing pages',odor:'Strong or musty odor' }[key])).filter(Boolean).join(' · ') || 'No issues reported'}</p></div>}
           {book.bundleItems?.length > 0 && <><h3 className="text-sm font-bold">Included in this bundle</h3><ul className="text-sm text-warm-600 list-disc pl-5">{book.bundleItems.map((title,i)=><li key={i}>{title}</li>)}</ul></>}
-          {book.status === 'lent' && <p className="text-sm text-warm-600">Currently on loan.</p>}
         </div>
         {book.journey?.length > 0 && <Suspense fallback={<p>Loading journey map…</p>}><JourneyMap book={book} /></Suspense>}
-        {book.status === 'gone' && getRequests().some(r => r.bookId === book.id && r.requesterId === user.id && r.status === 'done' && r.completedAt === book.lastHandoffAt && (r.exchangeMode || 'gift') === 'gift') && <button className="btn-primary w-full" onClick={() => runAction(() => communityAction('relistBook', {bookId:book.id,lat:user.lat,lng:user.lng}))}>Pass this book on →</button>}
+        {book.status === 'gone' && getRequests().some(r => r.bookId === book.id && r.requesterId === user.id && r.status === 'done' && r.completedAt === book.lastHandoffAt) && <button className="btn-primary w-full" onClick={() => runAction(() => communityAction('relistBook', {bookId:book.id,lat:user.lat,lng:user.lng}))}>List this book for sale or exchange →</button>}
         {!isOwner && <ListingSafety book={book} />}
         {/* Owner card with reputation */}
         {(() => {
@@ -162,9 +168,9 @@ export default function BookDetail({ user }) {
               How it works 🤝
             </p>
             {[
-              { icon: '📩', text: `Tap below to request from ${book.ownerName}` },
-              { icon: '💬', text: 'Chat to pick a time and spot nearby' },
-              { icon: '📖', text: 'Meet up, grab the book, enjoy!' },
+              { icon: '📩', text: book.exchangeMode === 'sale' ? `Message ${book.ownerName} about buying this book` : `Offer a book to ${book.ownerName}` },
+              { icon: '💬', text: book.exchangeMode === 'sale' ? 'Agree on the price and a meetup in chat' : 'Confirm the offered book and choose a meetup' },
+              { icon: '📖', text: 'Meet up and complete the exchange' },
             ].map((s, i) => (
               <div key={i} className="flex items-center gap-2.5 text-sm text-warm-700">
                 <span className="text-base">{s.icon}</span> {s.text}
@@ -254,15 +260,18 @@ export default function BookDetail({ user }) {
           <div className="flex items-center justify-center gap-2 text-sage-600 font-semibold py-2.5">
             <CheckCircle className="w-5 h-5" /> Request sent — check Messages
           </div>
-        ) : ['gone','lent'].includes(book.status) ? null : (
+        ) : book.status === 'gone' ? null : (
+          <>
+          {book.exchangeMode !== 'sale' && <label className="block text-xs font-semibold text-warm-700 mb-2">What book can you offer?<textarea className="input mt-1" rows={2} maxLength={200} placeholder="Book title, author, or a short offer" value={requesterOffer} onChange={event => setRequesterOffer(event.target.value)} /></label>}
           <button
             onClick={handleRequest}
-            disabled={requesting}
+            disabled={requesting || (book.exchangeMode !== 'sale' && !requesterOffer.trim())}
             className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-base"
           >
             <Heart className="w-4 h-4" />
-            {requesting ? 'Sending…' : `Request from ${book.ownerName}`}
+            {requesting ? 'Sending…' : book.exchangeMode === 'sale' ? `Message about buying · $${Number(book.askPrice || 0).toFixed(2)}` : `Offer an exchange to ${book.ownerName}`}
           </button>
+          </>
         )}
       </div>
     </div>

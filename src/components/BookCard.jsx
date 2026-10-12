@@ -65,7 +65,7 @@ export default function BookCard({ book, distance, layout = 'list' }) {
 
       <div className={`flex-1 min-w-0 ${grid ? 'p-3 flex flex-col' : 'py-0.5'}`}>
         <div className="flex flex-wrap gap-1 mb-2">
-          <span className={`badge text-[10px] ${book.exchangeMode === 'loan' ? 'bg-blue-50 text-blue-800' : 'bg-sage-100 text-sage-700'}`}>{book.exchangeMode === 'loan' ? `Borrow · ${book.loanDays || 14} days` : 'Free to keep'}</span>
+          <span className={`badge text-[10px] ${book.exchangeMode === 'sale' ? 'bg-amber-50 text-amber-800' : 'bg-sage-100 text-sage-700'}`}>{book.exchangeMode === 'sale' ? `For sale · $${Number(book.askPrice || 0).toFixed(2)}` : 'Book exchange'}</span>
           {book.bundleItems?.length > 0 && <span className="badge text-[10px] bg-amber-50 text-amber-800">{book.bundleItems.length}-book bundle</span>}
         </div>
         <div className="flex items-start justify-between gap-2">
@@ -75,7 +75,7 @@ export default function BookCard({ book, distance, layout = 'list' }) {
           </h3>
           {book.status !== 'available' && (
             <span className={`badge flex-shrink-0 text-[10px] ${book.status === 'requested' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-              {book.status === 'requested' ? 'Pending' : book.status === 'lent' ? 'On loan' : 'Passed on'}
+              {book.status === 'requested' ? 'Pending' : 'Completed'}
             </span>
           )}
         </div>

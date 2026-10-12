@@ -1,0 +1,145 @@
+{
+  "retrievedAt": "2026-10-11",
+  "status": "research-only",
+  "freshness": "Search provider reported source pages crawled last month; live availability not confirmed.",
+  "reusePermission": "Not verified for production redistribution",
+  "selection": "Small convenience sample from one marketplace, not a representative market sample. One offer per named seller. Prices in USD; shipping to US as shown.",
+  "editions": [
+    {
+      "title": "Dune",
+      "isbn": "9780441172719",
+      "publisher": "Ace",
+      "year": 1990,
+      "format": "softcover",
+      "condition": "Good",
+      "sourceUrl": "https://www.abebooks.com/book-search/isbn/9780441172719/",
+      "offers": [
+        {
+          "seller": "3Brothers Bookstore",
+          "item": 4.48,
+          "shipping": 0
+        },
+        {
+          "seller": "Zoom Books East",
+          "item": 5.05,
+          "shipping": 0
+        },
+        {
+          "seller": "World of Books",
+          "item": 5.45,
+          "shipping": 0
+        },
+        {
+          "seller": "Indiana Book Company",
+          "item": 2.39,
+          "shipping": 3.25
+        },
+        {
+          "seller": "Hawking Books",
+          "item": 6.59,
+          "shipping": 0
+        }
+      ],
+      "itemSummary": {
+        "status": "research-sample",
+        "sellerCount": 5,
+        "q25": 4.48,
+        "median": 5.05,
+        "q75": 5.45
+      },
+      "deliveredSummary": {
+        "status": "research-sample",
+        "sellerCount": 5,
+        "q25": 5.05,
+        "median": 5.45,
+        "q75": 5.64
+      }
+    },
+    {
+      "title": "Atomic Habits",
+      "isbn": "9780735211292",
+      "publisher": "Avery",
+      "year": 2018,
+      "format": "hardcover",
+      "condition": "Good",
+      "sourceUrl": "https://www.abebooks.com/book-search/isbn/9780735211292/",
+      "offers": [
+        {
+          "seller": "Goodwill Books, Hillsboro",
+          "item": 5.15,
+          "shipping": 3.99
+        },
+        {
+          "seller": "clickgoodwillbooks",
+          "item": 5.43,
+          "shipping": 3.99
+        },
+        {
+          "seller": "Austin Goodwill 1101",
+          "item": 6.17,
+          "shipping": 3.3
+        },
+        {
+          "seller": "Goodwill Southern California",
+          "item": 7,
+          "shipping": 3
+        },
+        {
+          "seller": "Goodwill, Brooklyn Park",
+          "item": 6.13,
+          "shipping": 3.99
+        }
+      ],
+      "caution": "Different regional Goodwill sellers; organizational independence is not established. Dust-jacket presence varies, so condition comparability is imperfect.",
+      "itemSummary": {
+        "status": "research-sample",
+        "sellerCount": 5,
+        "q25": 5.43,
+        "median": 6.13,
+        "q75": 6.17
+      },
+      "deliveredSummary": {
+        "status": "research-sample",
+        "sellerCount": 5,
+        "q25": 9.42,
+        "median": 9.47,
+        "q75": 10
+      }
+    },
+    {
+      "title": "The Midnight Library",
+      "isbn": "9780525559474",
+      "publisher": "Viking",
+      "year": 2020,
+      "format": "hardcover",
+      "condition": "Good",
+      "sourceUrl": "https://www.abebooks.com/book-search/isbn/9780525559474/",
+      "offers": [
+        {
+          "seller": "Cycle Books LA",
+          "item": 5.99,
+          "shipping": 2.99
+        },
+        {
+          "seller": "Cathy's Half Price Books",
+          "item": 4.99,
+          "shipping": 3.99
+        },
+        {
+          "seller": "St Vincent de Paul of Lane County",
+          "item": 5.49,
+          "shipping": 3.99
+        }
+      ],
+      "caution": "Insufficient sample. Excluded fair/very-good copies and a library copy described with loose binding and missing jacket.",
+      "itemSummary": {
+        "status": "insufficient",
+        "sellerCount": 3
+      },
+      "deliveredSummary": {
+        "status": "insufficient",
+        "sellerCount": 3
+      }
+    }
+  ]
+}

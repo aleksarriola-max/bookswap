@@ -1,5 +1,5 @@
 import HandoffQR from '../components/HandoffQR';
-import { communityAction, isBlocked } from '../store';
+import { isBlocked } from '../store';
 import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -137,8 +137,6 @@ export default function ChatThread({ user }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [clock, setClock] = useState(() => Date.now());
-  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60000); return () => clearInterval(timer); }, []);
   const bottomRef = useRef(null);
 
   const load = () => {
@@ -159,7 +157,7 @@ export default function ChatThread({ user }) {
 
   const isOwner = request.ownerId === user.id;
   const blocked = isBlocked(isOwner ? request.requesterId : request.ownerId);
-  const isClosed = ['declined','done','returned'].includes(request.status) || blocked;
+  const isClosed = ['declined','done'].includes(request.status) || blocked;
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -215,9 +213,12 @@ export default function ChatThread({ user }) {
         </Link>
       </div>
 
-      {blocked && <p className="bg-red-50 p-3 text-xs text-red-700">Contact is blocked. Manage blocked readers in Community. Loan returns can still be confirmed.</p>}
-      {request.status === 'loaned' && <div className="p-3 bg-amber-50 text-sm text-warm-700 space-y-2"><p>{request.dueAt < clock ? 'Return overdue' : 'On loan'} · Return by {new Date(request.dueAt).toLocaleDateString()}</p>{isOwner && <button className="btn-primary text-xs" onClick={() => runAction(() => communityAction('returnLoan',{requestId}))}>I received the returned book</button>}</div>}
-      {request.status === 'returned' && <p className="p-3 text-sm text-sage-700">Loan returned — thank you!</p>}
+      {blocked && <p className="bg-red-50 p-3 text-xs text-red-700">Contact is blocked. Manage blocked readers in Community.</p>}
+      <div className="px-4 py-3 bg-sage-50 border-b border-sage-100 text-sm text-sage-900">
+        <p className="font-semibold">{request.exchangeMode === 'sale' ? `Sale · $${Number(request.askPrice || 0).toFixed(2)} asking` : 'Book exchange'}</p>
+        {request.requesterOffer && <p className="text-xs mt-1">Book offered: {request.requesterOffer}</p>}
+        {request.exchangeMode === 'sale' && <p className="text-xs mt-1">Confirm the agreed price before marking the handoff complete.</p>}
+      </div>
       {/* Status banners */}
       {request.status === 'pending' && (
         isOwner ? (

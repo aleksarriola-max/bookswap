@@ -54,15 +54,21 @@ export const createUser = ({ name, lat, lng }) => {
 export const clearUser = async () => { if (cloudEnabled) { const { error } = await supabase.auth.signOut(); if (error) throw error; } localStorage.removeItem(KEYS.user); };
 
 // ── Books ─────────────────────────────────────────────────────────────────────
-export const getBooks = () => read(KEYS.books, []);
+export const getBooks = () => read(KEYS.books, []).map(book => ({
+  ...book,
+  exchangeMode: ['sale','exchange'].includes(book.exchangeMode) ? book.exchangeMode : 'exchange',
+  exchangeWanted: book.exchangeWanted || '',
+  status: book.status === 'lent' ? 'gone' : book.status,
+}));
 
-const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, ownerId, ownerName, lat, lng, ...options }) => {
+const localaddBook = ({ title, author, condition, genre, note, imageDataUrl, photoUrls = [], ownerId, ownerName, lat, lng, ...options }) => {
   const book = {
     id: uid(), title, author,
     condition,                     // 'Like new' | 'Good' | 'Worn'
     genre: genre || 'other',
     note: note || '',
     imageDataUrl: imageDataUrl || null,
+    photoUrls,
     ownerId, ownerName, lat, lng,
     ...options,
     status: 'available',           // 'available' | 'requested' | 'gone'
@@ -92,23 +98,21 @@ export const getSurpriseBook = (lat, lng, userId, radiusKm = 5) => {
 };
 
 // ── Requests ──────────────────────────────────────────────────────────────────
-export const getRequests = () => read(KEYS.requests, []);
+export const getRequests = () => read(KEYS.requests, []).map(request => ({
+  ...request,
+  exchangeMode: ['sale','exchange'].includes(request.exchangeMode) ? request.exchangeMode : 'exchange',
+  status: ['loaned','returned'].includes(request.status) ? 'done' : request.status,
+}));
 
-const localcreateRequest = ({ bookId, bookTitle, requesterId, requesterName, ownerId }) => {
+const localcreateRequest = ({ bookId, bookTitle, requesterId, requesterName, ownerId, requesterOffer = '' }) => {
   const existing = getRequests().find((r) => r.bookId === bookId && r.requesterId === requesterId);
-  if (existing) {
-    if (existing.status === 'returned') {
-      const renewed = { ...existing, status: 'pending', createdAt: Date.now() };
-      ['confirmedSlot','confirmedSpot','offeredSlots','completedAt','dueAt','returnedAt'].forEach(key => delete renewed[key]);
-      write(KEYS.requests, getRequests().map(r => r.id === renewed.id ? renewed : r));
-      updateBookStatus(bookId, 'requested'); return renewed;
-    }
-    return existing;
-  }
+  if (existing) return existing;
   const req = {
     id: uid(), bookId, bookTitle, requesterId, requesterName, ownerId,
-    exchangeMode: getBooks().find(b => b.id === bookId)?.exchangeMode || 'gift',
-    loanDays: getBooks().find(b => b.id === bookId)?.loanDays || 14,
+    exchangeMode: getBooks().find(b => b.id === bookId)?.exchangeMode || 'exchange',
+    askPrice: getBooks().find(b => b.id === bookId)?.askPrice ?? null,
+    exchangeWanted: getBooks().find(b => b.id === bookId)?.exchangeWanted || '',
+    requesterOffer,
     status: 'pending', createdAt: Date.now(),
   };
   write(KEYS.requests, [req, ...getRequests()]);
@@ -211,7 +215,7 @@ const localaddStickyNote = (bookId, { userId, userName, text }) => {
 
 // ── Community stats ───────────────────────────────────────────────────────────
 export const getCommunityStats = (lat, lng, radiusKm = 5) => {
-  const nearby = getBooks().filter((b) => distanceKm(lat, lng, b.lat, b.lng) <= radiusKm);
+  const nearby = getBooks().filter((b) => !b.isDemo && distanceKm(lat, lng, b.lat, b.lng) <= radiusKm);
   const shared = nearby.filter((b) => b.status === 'gone').length;
   const available = nearby.filter((b) => b.status === 'available').length;
   const people = new Set(nearby.map((b) => b.ownerId)).size;
@@ -291,7 +295,7 @@ export const seedDemoData = (userLat, userLng) => {
     { title: 'The Alchemist', author: 'Paulo Coelho', genre: 'fiction', condition: 'Good', note: 'Beautifully written. Passing the magic on ✨', lat: userLat - 0.010, lng: userLng + 0.006, ownerName: 'Rafaella', ownerId: 'demo2' },
     { title: 'Educated', author: 'Tara Westover', genre: 'nonfiction', condition: 'Like new', note: 'Incredible memoir. Will change how you think.', lat: userLat + 0.006, lng: userLng - 0.012, ownerName: 'Kay', ownerId: 'demo5' },
   ];
-  write(KEYS.books, demos.map((d) => ({ id: uid(), ...d, imageDataUrl: null, status: 'available', createdAt: Date.now() - Math.random() * 86400000 * 3 })));
+  write(KEYS.books, demos.map((d, index) => ({ id: uid(), ...d, exchangeMode: index % 3 === 0 ? 'exchange' : 'sale', askPrice: index % 3 === 0 ? null : 5 + index, exchangeWanted: index % 3 === 0 ? 'Mystery, fantasy, or make an offer' : '', isDemo: true, imageDataUrl: null, status: 'available', createdAt: Date.now() - Math.random() * 86400000 * 3 })));
 
   // Seed some "done" books so demo owners show reputation badges
   const doneBooks = [
@@ -302,19 +306,21 @@ export const seedDemoData = (userLat, userLng) => {
     { title: 'Old Book 5', author: 'Author E', genre: 'history', condition: 'Good', note: '', lat: userLat, lng: userLng, ownerName: 'Rafaella', ownerId: 'demo2', status: 'gone' },
   ];
   const existing = read(KEYS.books, []);
-  write(KEYS.books, [...existing, ...doneBooks.map((d) => ({ id: uid(), ...d, imageDataUrl: null, createdAt: Date.now() - Math.random() * 86400000 * 10 }))]);
+  write(KEYS.books, [...existing, ...doneBooks.map((d) => ({ id: uid(), ...d, isDemo: true, exchangeMode: 'exchange', exchangeWanted: 'Open to book offers', imageDataUrl: null, createdAt: Date.now() - Math.random() * 86400000 * 10 }))]);
 };
 
 // Shared mode uses atomic server actions; demo mode retains its existing local store.
 export const addBook = async args => {
   if (!cloudEnabled) {
-    if (args.exchangeMode==='loan' && (!Number.isInteger(args.loanDays) || args.loanDays<1 || args.loanDays>90)) throw new Error('Choose a loan length of 1–90 days.');
+    if (!['sale','exchange'].includes(args.exchangeMode)) throw new Error('Choose sale or exchange.');
+    if (args.exchangeMode === 'sale' && (!Number.isFinite(args.askPrice) || args.askPrice <= 0)) throw new Error('Enter a price greater than $0.');
+    if (args.exchangeMode === 'exchange' && !args.exchangeWanted?.trim()) throw new Error('Say what you would like in exchange.');
     return localaddBook(args);
   }
-  return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl) });
+  return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl), photoUrls: await Promise.all((args.photoUrls || []).map(uploadCover)) });
 };
 export const deleteBook = async bookId => cloudEnabled ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
-export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (book?.isDemo) throw new Error('This is a demo listing. Fictional readers cannot receive requests.'); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); return localcreateRequest(args); };
+export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (book?.isDemo) throw new Error('This is a demo listing. Fictional readers cannot receive requests.'); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); if ((book.exchangeMode || 'exchange') === 'exchange' && !args.requesterOffer?.trim()) throw new Error('Describe the book you can offer.'); return localcreateRequest(args); };
 export const updateRequestStatus = async (requestId, status, journeyNote = '') => cloudEnabled ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
 export const sendMessage = async args => { if (cloudEnabled) return cloudAction('sendMessage', args); const req=getRequests().find(r=>r.id===args.requestId); if (!req || [req.ownerId,req.requesterId].some(id=>isBlocked(id))) throw new Error('Contact is blocked.'); return localsendMessage(args); };
 export const setRequestAvailability = async (requestId, slots) => cloudEnabled ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);
@@ -357,7 +363,7 @@ export async function communityAction(action, args = {}) {
     write(KEYS.reports,[report,...getReports()]); return report;
   }
   if (action === 'relistBook') {
-    if (!book || book.status!=='gone' || !getRequests().some(r=>r.bookId===book.id && r.requesterId===user.id && r.completedAt===book.lastHandoffAt)) throw new Error('Only the latest gift recipient can pass this book on.');
+    if (!book || book.status!=='gone' || !getRequests().some(r=>r.bookId===book.id && r.requesterId===user.id && r.completedAt===book.lastHandoffAt)) throw new Error('Only the latest recipient can relist this book.');
     saveBook({status:'available',ownerId:user.id,ownerName:user.name,lat:user.lat,lng:user.lng,groupId:null,createdAt:now}); return true;
   }
   if (!request || ![request.ownerId,request.requesterId].includes(user.id)) throw new Error('Conversation not found.');
@@ -368,14 +374,10 @@ export async function communityAction(action, args = {}) {
   }
   if (action === 'completeHandoff') {
     if (user.id!==request.requesterId || request.status!=='accepted' || args.code!==request.handoffCode || request.handoffExpiresAt<now) throw new Error('Invalid or expired handoff code.');
-    const loan=request.exchangeMode==='loan';
-    saveRequest({status:loan?'loaned':'done',completedAt:now,dueAt:loan?now+request.loanDays*86400000:null,handoffCode:null,handoffExpiresAt:null});
-    saveBook({status:loan?'lent':'gone',originLat:book.originLat??book.lat,originLng:book.originLng??book.lng,lastHandoffAt:now,handoffCount:(book.handoffCount||0)+1,journey:[...(book.journey||[]),{userId:user.id,userName:user.name,note:args.note||'',lat:user.lat,lng:user.lng,ts:now}]});
+    saveRequest({status:'done',completedAt:now,handoffCode:null,handoffExpiresAt:null,agreedPrice:args.agreedPrice ?? request.agreedPrice ?? null});
+    saveBook({status:'gone',originLat:book.originLat??book.lat,originLng:book.originLng??book.lng,lastHandoffAt:now,handoffCount:(book.handoffCount||0)+1,journey:[...(book.journey||[]),{userId:user.id,userName:user.name,note:args.note||'',lat:user.lat,lng:user.lng,ts:now,transactionType:book.exchangeMode || 'exchange',agreedPrice:args.agreedPrice ?? request.agreedPrice ?? null}]});
     write(KEYS.requests,getRequests().map(r=>r.bookId===book.id && r.id!==request.id && r.status==='pending'?{...r,status:'declined'}:r)); return true;
   }
-  if (action === 'returnLoan') {
-    if (user.id!==request.ownerId || request.status!=='loaned') throw new Error('Only the lender can confirm a return.');
-    saveRequest({status:'returned',returnedAt:now});saveBook({status:'available'}); return true;
-  }
+  if (action === 'returnLoan') throw new Error('Borrowing is not supported. Ctrl+Us listings are for sale or exchange.');
   throw new Error('Unknown community action.');
 }

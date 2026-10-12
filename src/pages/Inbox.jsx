@@ -9,14 +9,14 @@ const STATUS_STYLES = {
   pending: 'bg-yellow-100 text-yellow-700',
   accepted: 'bg-green-100 text-green-700',
   declined: 'bg-red-100 text-red-600',
-  done: 'bg-gray-100 text-gray-500', loaned:'bg-amber-100 text-amber-700', returned:'bg-green-100 text-green-700',
+  done: 'bg-gray-100 text-gray-500',
 };
 
 const STATUS_LABELS = {
   pending: 'Pending',
   accepted: 'Accepted',
   declined: 'Declined',
-  done: 'Done', loaned:'On loan', returned:'Returned',
+  done: 'Completed',
 };
 
 function timeAgo(ts) {
@@ -59,14 +59,14 @@ export default function Inbox({ user }) {
     <div className="flex flex-col h-full">
       <div className="px-4 py-4 space-y-3">
         <h1 className="text-xl font-bold text-warm-900">Your conversations</h1>
-        <p className="text-xs text-warm-500">Plan a handoff, keep in touch, return a borrowed read.</p>
+        <p className="text-xs text-warm-500">Discuss the price or book offer, then plan your handoff.</p>
         <input className="input" aria-label="Search conversations" placeholder="Search books or readers" value={search} onChange={e=>setSearch(e.target.value)} />
         <div className="flex gap-2">{['all','active','completed'].map(value=><button key={value} aria-pressed={filter===value} className={`flex-1 text-xs ${filter===value?'btn-primary':'btn-secondary'}`} onClick={()=>setFilter(value)}>{value==='all'?'All':value==='active'?'Active':'History'}</button>)}</div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-        {!requests.some(req=>(filter==='all' || (filter==='active' ? ['pending','accepted','loaned'].includes(req.status) : ['done','returned','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())) && <p className="card p-5 text-sm text-warm-600">No conversations match these filters.</p>}
-        {requests.filter(req=>(filter==='all' || (filter==='active' ? ['pending','accepted','loaned'].includes(req.status) : ['done','returned','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())).map((req) => {
+        {!requests.some(req=>(filter==='all' || (filter==='active' ? ['pending','accepted'].includes(req.status) : ['done','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())) && <p className="card p-5 text-sm text-warm-600">No conversations match these filters.</p>}
+        {requests.filter(req=>(filter==='all' || (filter==='active' ? ['pending','accepted'].includes(req.status) : ['done','declined'].includes(req.status))) && `${req.bookTitle} ${req.requesterName}`.toLowerCase().includes(search.toLowerCase())).map((req) => {
           const isMine = req.requesterId === user.id;
           const book=getBooks().find(book=>book.id===req.bookId);
           return (
@@ -89,14 +89,15 @@ export default function Inbox({ user }) {
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 truncate">
-                  {isMine ? `From ${book?.ownerName || 'the owner'}` : `${req.requesterName} requested this book`}
+                  {isMine ? `From ${book?.ownerName || 'the owner'}` : `${req.requesterName} wants to ${req.exchangeMode === 'sale' ? 'buy' : 'exchange for'} this book`}
                 </p>
+                {req.requesterOffer && <p className="text-xs text-sage-700 truncate mt-0.5">Offers: {req.requesterOffer}</p>}
                 {req.lastMessage && (
                   <p className="text-xs text-gray-400 truncate mt-0.5">
                     {req.lastMessage.senderName === user.name ? 'You: ' : ''}{req.lastMessage.text}
                   </p>
                 )}
-                {req.status==='loaned' && req.dueAt && <p className="text-xs text-amber-700 mt-1">Return due {new Date(req.dueAt).toLocaleDateString()}</p>}
+                {req.exchangeMode === 'sale' && <p className="text-xs text-amber-700 mt-1">Listed at ${Number(req.askPrice || book?.askPrice || 0).toFixed(2)}</p>}
               </div>
 
               <div className="flex flex-col items-end gap-1.5">

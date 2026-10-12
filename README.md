@@ -17,7 +17,7 @@ accounts and shared data; sample books are not uploaded or seeded in the databas
 ## Free integrations
 
 - **Open Library:** Post → Find your book searches title, author, or ISBN and fills
-  in the title, author, and available cover. Details remain editable. Search is
+  in the title, author, ISBN, and available cover. Details remain editable. Search is
   user-triggered and cached in memory. [API documentation](https://openlibrary.org/developers/api).
 - **Meetup places:** after an exchange is accepted and the requester offers times,
   the owner can find named cafés and libraries within 3 km, select one, and open it
@@ -32,7 +32,8 @@ accounts and shared data; sample books are not uploaded or seeded in the databas
 ## Supabase setup
 
 1. Create a free Supabase project.
-2. Run `supabase/schema.sql`, then `supabase/migrations/002_community_features.sql`
+2. Run `supabase/schema.sql`, then migrations `002_community_features.sql`,
+   `003_demo_preview.sql`, and `004_marketplace.sql`
    once in the project's SQL Editor. The initial script is for a
    new project; its transaction creates the tables, RLS policies, atomic write
    function, a public cover bucket (5 MB limit), and realtime publication entries.
@@ -62,18 +63,30 @@ the app; they do not send push notifications or email.
 
 ## Community features
 
+- Listings are either for sale or for a book exchange. Exchange requests include
+  the book offered; sales show an asking price and capture the agreed price when
+  the verified handoff is completed. Payment is coordinated by the people in chat;
+  the school prototype does not process payments.
+- Condition uses a seller-confirmed guided checklist plus up to four compressed
+  photos. The checklist suggests a grade from reported wear; it does not use AI
+  or claim to inspect the photos.
+- Price guidance only appears for an exact researched ISBN, print format, and
+  condition with at least five active marketplace offers. It shows the middle
+  range of asking prices, with source and date; it is not sold-price data. The
+  current pilot covers only a few books, so most listings correctly say there is
+  not enough comparable data yet.
+- Browse separates real listings from the school preview. Fictional books cannot
+  receive requests and do not count as community handoffs.
 - Wishlist matches use title and optional author, including titles in bundles,
   within the selected radius. Matches respect groups and blocked readers.
-- Post a bundle of up to 10 book titles as one listing; the whole bundle exchanges
-  together. Gifts are kept; loans last 1–90 days from the verified handoff.
+- Post a bundle of up to 10 book titles as one sale or exchange listing; the whole
+  bundle changes hands together. Sales record the agreed price at verified handoff.
 - Create or join open campus/dorm groups under Groups. Group listings require
   membership to read or request. These are open groups, not verified school affiliations.
 - After a meetup is confirmed, the owner generates a real QR link. The requester
   scans it with their phone camera and explicitly confirms receipt while signed in.
   Codes last 24 hours and are consumed once; old direct completion is disabled.
-- Loan chat shows the return deadline. The lender confirms receipt of the return,
-  making the book available again. A returned loan may be borrowed again.
-- Gift recipients can pass on the same listing. Its journey keeps the original
+- A completed recipient can relist a book for sale or exchange. Its journey keeps the original
   neighborhood and adds each recipient's rounded coordinates. Legacy handoffs
   without coordinates remain in the written history.
 - Community and group challenges count recorded handoffs this calendar month
@@ -82,17 +95,19 @@ the app; they do not send push notifications or email.
   project administrator, who reviews them through Supabase's reports table.
   Reports do not automatically hide listings. Blocking hides a reader's listings
   and rejects contact in both directions. Manage blocks and reports in Community;
-  loan returns and declining pending exchanges remain possible after blocking.
+  declining pending exchanges remains possible after blocking.
 
-For an existing project, apply unapplied migrations in order: 002, then 003.
-They preserve existing rows and revoke browser access to internal functions.
+For an existing project, apply unapplied migrations in order: 002, 003, then 004.
+Migration 004 changes legacy gift/loan listings into book exchanges without
+inventing prices, adds sale and exchange details, and records agreed sale prices.
+It preserves existing rows and revokes browser access to internal functions.
 
 ## School preview books
 
-After migration 003, run `supabase/demo_seed.sql` in the Supabase SQL Editor as
+After migration 004, run `supabase/demo_seed.sql` in the Supabase SQL Editor as
 the database administrator. First post a listing with your neighborhood location;
 the seed uses that approximate area for 24 sample books from six fictional readers.
-It includes six loan listings, two bundles, and eight sample journey histories.
+It includes sale and exchange listings, two bundles, and eight sample journey histories.
 The fictional users have no email, password, or login identity. Demo requests are
 disabled in the UI and database, and sample journeys do not count as real handoffs.
 Rerunning the seed creates no duplicates and preserves existing listings.
@@ -125,6 +140,7 @@ npm run lint
 npm run test:backend
 npm run test:community
 npm run test:personal
+npm run test:marketplace
 ```
 
 The embedded Postgres tests run the actual database schema with stand-ins for
