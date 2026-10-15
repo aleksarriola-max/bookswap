@@ -1,4 +1,4 @@
-import { cloudEnabled, useStoreVersion } from '../lib/cloud';
+import { cloudEnabled, isGuestMode, useStoreVersion } from '../lib/cloud';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Search, SlidersHorizontal, Sparkles, Shuffle, BookHeart } from 'lucide-react';
@@ -16,7 +16,7 @@ export default function Browse({ user }) {
   const dataVersion = useStoreVersion();
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
-  const [showSchoolPreview, setShowSchoolPreview] = useState(!cloudEnabled);
+  const [showSchoolPreview, setShowSchoolPreview] = useState(!cloudEnabled || isGuestMode());
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('all');
   const [condition, setCondition] = useState('All');

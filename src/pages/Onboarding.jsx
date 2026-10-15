@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { createUser } from '../store';
-import { cloudEnabled } from '../lib/cloud';
+import { cloudEnabled, isGuestMode } from '../lib/cloud';
 
 export default function Onboarding({ onJoined, initialName = '' }) {
   const [name, setName] = useState(initialName);
-  const [step, setStep] = useState(cloudEnabled ? 'location' : 'name');
+  const [step, setStep] = useState(cloudEnabled && !isGuestMode() ? 'location' : 'name');
   const [error, setError] = useState('');
 
   const handleName = (e) => {
@@ -83,7 +83,7 @@ export default function Onboarding({ onJoined, initialName = '' }) {
               Let's go →
             </button>
             <p className="text-xs text-center text-gray-400">
-              {cloudEnabled ? 'Choose your name and neighborhood' : 'No sign-up required · works in your browser'}
+              {cloudEnabled && !isGuestMode() ? 'Choose your name and neighborhood' : 'No sign-up required · works in your browser'}
             </p>
           </form>
         )}

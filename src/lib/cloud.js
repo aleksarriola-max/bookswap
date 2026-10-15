@@ -7,6 +7,7 @@ export const cloudEnabled = Boolean(url && key);
 export const supabase = cloudEnabled ? createClient(url, key) : null;
 export const cloudCache = { books: [], requests: [], messages: [], wishlist: [], groups: [], group_members: [], blocks: [], reports: [] };
 let identity = null;
+let guestMode = false;
 let version = 0;
 let refreshQueue = Promise.resolve();
 const listeners = new Set();
@@ -16,6 +17,13 @@ export const useStoreVersion = () => useSyncExternalStore(listener => {
 }, () => version);
 export const notifyStore = notify;
 export const cloudUserId = () => identity;
+export const isGuestMode = () => guestMode;
+export const setGuestMode = enabled => {
+  if (guestMode !== enabled) {
+    guestMode = enabled;
+    notify();
+  }
+};
 export function clearCloudCache() {
   identity = null;
   Object.keys(cloudCache).forEach(key => { cloudCache[key] = []; });

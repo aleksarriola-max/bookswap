@@ -1,4 +1,4 @@
-import { cloudEnabled, cloudCache, cloudUserId, cloudAction, uploadCover, notifyStore, supabase } from './lib/cloud';
+import { cloudEnabled, isGuestMode, cloudCache, cloudUserId, cloudAction, uploadCover, notifyStore, supabase } from './lib/cloud';
 
 // store.js — localStorage-backed state
 
@@ -12,12 +12,13 @@ const KEYS = {
 };
 
 const read = (key, fallback) => {
-  if (cloudEnabled && key !== KEYS.user) return cloudCache[Object.keys(KEYS).find(name => KEYS[name] === key)] || fallback;
+  if (isCloudBackend() && key !== KEYS.user) return cloudCache[Object.keys(KEYS).find(name => KEYS[name] === key)] || fallback;
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }
   catch { return fallback; }
 };
 const write = (key, val) => { localStorage.setItem(key, JSON.stringify(val)); notifyStore(); };
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const isCloudBackend = () => cloudEnabled && !isGuestMode();
 
 // ── Genres ────────────────────────────────────────────────────────────────────
 export const GENRES = [
@@ -47,11 +48,11 @@ export const distanceKm = (lat1, lon1, lat2, lon2) => {
 export const getUser = () => read(KEYS.user, null);
 export const saveUser = (u) => write(KEYS.user, u);
 export const createUser = ({ name, lat, lng }) => {
-  const user = { id: cloudEnabled ? cloudUserId() : uid(), name, lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100, joinedAt: Date.now() };
+  const user = { id: isCloudBackend() ? cloudUserId() : uid(), name, lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100, joinedAt: Date.now() };
   saveUser(user);
   return user;
 };
-export const clearUser = async () => { if (cloudEnabled) { const { error } = await supabase.auth.signOut(); if (error) throw error; } localStorage.removeItem(KEYS.user); };
+export const clearUser = async () => { if (isCloudBackend()) { const { error } = await supabase.auth.signOut(); if (error) throw error; } localStorage.removeItem(KEYS.user); };
 
 // ── Books ─────────────────────────────────────────────────────────────────────
 export const getBooks = () => read(KEYS.books, []).map(book => ({
@@ -285,7 +286,7 @@ export const getPalette = (title) => {
 
 // ── Seed demo data ────────────────────────────────────────────────────────────
 export const seedDemoData = (userLat, userLng) => {
-  if (cloudEnabled || getBooks().length > 0) return;
+  if (isCloudBackend() || getBooks().length > 0) return;
   const demos = [
     { title: 'Project Hail Mary', author: 'Andy Weir', genre: 'scifi', condition: 'Like new', note: '🚀 Great sci-fi — loved it! Perfect condition.', lat: userLat + 0.008, lng: userLng + 0.005, ownerName: 'Jiaxin', ownerId: 'demo1' },
     { title: 'Atomic Habits', author: 'James Clear', genre: 'selfhelp', condition: 'Good', note: 'Some highlights & margin notes inside 📝', lat: userLat - 0.004, lng: userLng + 0.011, ownerName: 'Rafaella', ownerId: 'demo2' },
@@ -311,7 +312,7 @@ export const seedDemoData = (userLat, userLng) => {
 
 // Shared mode uses atomic server actions; demo mode retains its existing local store.
 export const addBook = async args => {
-  if (!cloudEnabled) {
+  if (!isCloudBackend()) {
     if (!['sale','exchange'].includes(args.exchangeMode)) throw new Error('Choose sale or exchange.');
     if (args.exchangeMode === 'sale' && (!Number.isFinite(args.askPrice) || args.askPrice <= 0)) throw new Error('Enter a price greater than $0.');
     if (args.exchangeMode === 'exchange' && !args.exchangeWanted?.trim()) throw new Error('Say what you would like in exchange.');
@@ -319,15 +320,15 @@ export const addBook = async args => {
   }
   return cloudAction('addBook', { ...args, imageDataUrl: await uploadCover(args.imageDataUrl), photoUrls: await Promise.all((args.photoUrls || []).map(uploadCover)) });
 };
-export const deleteBook = async bookId => cloudEnabled ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
-export const createRequest = async args => { if (cloudEnabled) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (book?.isDemo) throw new Error('This is a demo listing. Fictional readers cannot receive requests.'); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); if ((book.exchangeMode || 'exchange') === 'exchange' && !args.requesterOffer?.trim()) throw new Error('Describe the book you can offer.'); return localcreateRequest(args); };
-export const updateRequestStatus = async (requestId, status, journeyNote = '') => cloudEnabled ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
-export const sendMessage = async args => { if (cloudEnabled) return cloudAction('sendMessage', args); const req=getRequests().find(r=>r.id===args.requestId); if (!req || [req.ownerId,req.requesterId].some(id=>isBlocked(id))) throw new Error('Contact is blocked.'); return localsendMessage(args); };
-export const setRequestAvailability = async (requestId, slots) => cloudEnabled ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);
-export const confirmSlot = async (requestId, slot, spot) => cloudEnabled ? cloudAction('confirmSlot', { requestId, slot, spot }) : localconfirmSlot(requestId, slot, spot);
-export const addStickyNote = async (bookId, args) => cloudEnabled ? cloudAction('addStickyNote', { bookId, ...args }) : localaddStickyNote(bookId, args);
-export const addWish = async args => cloudEnabled ? cloudAction('addWish', args) : localaddWish(args);
-export const removeWish = async wishId => cloudEnabled ? cloudAction('removeWish', { wishId }) : localremoveWish(wishId);
+export const deleteBook = async bookId => isCloudBackend() ? cloudAction('deleteBook', { bookId }) : localdeleteBook(bookId);
+export const createRequest = async args => { if (isCloudBackend()) return cloudAction('createRequest', args); const book=getBooks().find(b=>b.id===args.bookId); if (book?.isDemo) throw new Error('This is a demo listing. Fictional readers cannot receive requests.'); if (!book || !canSeeBook(book) || !['available','requested'].includes(book.status)) throw new Error('This listing is unavailable.'); if ((book.exchangeMode || 'exchange') === 'exchange' && !args.requesterOffer?.trim()) throw new Error('Describe the book you can offer.'); return localcreateRequest(args); };
+export const updateRequestStatus = async (requestId, status, journeyNote = '') => isCloudBackend() ? cloudAction('updateRequestStatus', { requestId, status, journeyNote }) : localupdateRequestStatus(requestId, status, journeyNote);
+export const sendMessage = async args => { if (isCloudBackend()) return cloudAction('sendMessage', args); const req=getRequests().find(r=>r.id===args.requestId); if (!req || [req.ownerId,req.requesterId].some(id=>isBlocked(id))) throw new Error('Contact is blocked.'); return localsendMessage(args); };
+export const setRequestAvailability = async (requestId, slots) => isCloudBackend() ? cloudAction('setRequestAvailability', { requestId, slots }) : localsetRequestAvailability(requestId, slots);
+export const confirmSlot = async (requestId, slot, spot) => isCloudBackend() ? cloudAction('confirmSlot', { requestId, slot, spot }) : localconfirmSlot(requestId, slot, spot);
+export const addStickyNote = async (bookId, args) => isCloudBackend() ? cloudAction('addStickyNote', { bookId, ...args }) : localaddStickyNote(bookId, args);
+export const addWish = async args => isCloudBackend() ? cloudAction('addWish', args) : localaddWish(args);
+export const removeWish = async wishId => isCloudBackend() ? cloudAction('removeWish', { wishId }) : localremoveWish(wishId);
 
 export const getGroups = () => read(KEYS.groups, []);
 export const getMemberships = () => read(KEYS.group_members, []);
@@ -337,9 +338,9 @@ export const getJoinedGroups = () => getGroups().filter(group => getMemberships(
 export const isBlocked = targetId => getBlocks().some(block => block.userId === getUser()?.id && block.targetId === targetId);
 export const canSeeBook = book => !isBlocked(book.ownerId) && (book.ownerId === getUser()?.id || !book.groupId || getJoinedGroups().some(group => group.id === book.groupId));
 export async function communityAction(action, args = {}) {
-  if (cloudEnabled) return cloudAction(action, args);
+  if (isCloudBackend()) return cloudAction(action, args);
   const user = getUser();
-  if (!user) throw new Error('Sign in first.');
+  if (!user) throw new Error('Create a local profile first.');
   const now = Date.now();
   const request = getRequests().find(item => item.id === args.requestId);
   const book = getBooks().find(item => item.id === (args.bookId || request?.bookId));

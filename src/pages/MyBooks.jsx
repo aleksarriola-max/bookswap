@@ -1,4 +1,4 @@
-import { useStoreVersion, runAction } from '../lib/cloud';
+import { cloudEnabled, isGuestMode, useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, LogOut, BookOpen } from 'lucide-react';
@@ -45,9 +45,9 @@ export default function MyBooks({ user, onLogout }) {
               )}
             </div>
           </div>
-          <button onClick={handleLogout} className="btn-ghost text-xs flex items-center gap-1 text-gray-400 mt-1">
+          {cloudEnabled && !isGuestMode() && <button onClick={handleLogout} className="btn-ghost text-xs flex items-center gap-1 text-gray-400 mt-1">
             <LogOut className="w-3.5 h-3.5" /> Out
-          </button>
+          </button>}
         </div>
 
         {/* Stats row */}
