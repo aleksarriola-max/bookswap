@@ -7,7 +7,8 @@ import { useStoreVersion, runAction } from '../lib/cloud';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, CheckCircle, BookOpen, Trash2, Heart, ShieldCheck, StickyNote } from 'lucide-react';
-import { getBooks, distanceKm, createRequest, getRequests, deleteBook, getUserStats, getRepBadge, addStickyNote } from '../store';
+import { submitRequest } from '../lib/trackedActions';
+import { getBooks, distanceKm, getRequests, deleteBook, getUserStats, getRepBadge, addStickyNote } from '../store';
 import { BookCover } from '../components/BookCard';
 
 const CONDITION_INFO = {
@@ -49,7 +50,7 @@ export default function BookDetail({ user }) {
 
   const handleRequest = async () => {
     setRequesting(true);
-    const req = await runAction(() => createRequest({
+    const req = await runAction(() => submitRequest({
       bookId: book.id, bookTitle: book.title,
       requesterId: user.id, requesterName: user.name, ownerId: book.ownerId,
       requesterOffer: requesterOffer.trim(),

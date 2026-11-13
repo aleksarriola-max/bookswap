@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { getUser } from './store';
+import { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { getUser, getBooks } from './store';
+import StudyFeedback from './pages/StudyFeedback';
+import { trackPageview } from './lib/analytics';
+import { routeTemplate } from './lib/analyticsPolicy';
 import Onboarding from './pages/Onboarding';
 import Browse from './pages/Browse';
 import BookDetail from './pages/BookDetail';
@@ -14,6 +17,19 @@ import BottomNav from './components/BottomNav';
 import Community from './pages/Community';
 import Handoff from './pages/Handoff';
 import { cloudEnabled, isGuestMode, setGuestMode, supabase, setCloudIdentity, clearCloudCache, refreshCloud, reportError } from './lib/cloud';
+
+// One $pageview per navigation, sent as a route template (e.g. /handoff/:id), never the raw URL.
+function RouteAnalytics() {
+  const location = useLocation();
+  const lastKey = useRef(null);
+  useEffect(() => {
+    if (lastKey.current === location.key) return;
+    lastKey.current = location.key;
+    if (routeTemplate(location.pathname) === '/book/:id' && getBooks().find(book => book.id === location.pathname.split('/')[2])?.isDemo) return;
+    trackPageview(location.pathname);
+  }, [location.key, location.pathname]);
+  return null;
+}
 
 export default function App() {
   const [user, setUser] = useState(() => getUser());
@@ -64,6 +80,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <RouteAnalytics />
       <div className="flex flex-col h-screen max-w-lg mx-auto overflow-hidden" style={{ background: '#fdf6ec' }}>
         {error && <div role="alert" className="bg-red-50 text-red-700 px-4 py-2 text-xs flex items-center gap-2"><span className="flex-1">{error}</span><button aria-label="Dismiss error" onClick={() => setError('')}>×</button></div>}
         {(isGuestMode() || !cloudEnabled) && <p className="text-center text-xs text-warm-500 py-1">Guest mode · your books and activity stay in this browser</p>}
@@ -79,6 +96,7 @@ export default function App() {
             <Route path="/wishlist" element={<Wishlist user={user} />} />
             <Route path="/community" element={<Community />} />
             <Route path="/handoff/:id" element={<Handoff user={user} />} />
+            <Route path="/study-feedback" element={<StudyFeedback />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

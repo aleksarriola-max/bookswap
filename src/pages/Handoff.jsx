@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { getRequests, communityAction } from '../store';
+import { getRequests } from '../store';
+import { completeHandoff } from '../lib/trackedActions';
 import { useStoreVersion, runAction } from '../lib/cloud';
 import Confetti from '../components/Confetti';
 
@@ -21,7 +22,7 @@ export default function Handoff({ user }) {
     <h1 className="text-xl font-bold text-warm-800">Confirm book handoff 📦</h1>
     {done ? <div className="card p-4 space-y-2"><p className="font-bold text-sage-700">Receipt confirmed!</p><p className="text-sm text-warm-600">Your book’s journey is updated.</p><Link className="btn-primary inline-block" to={`/book/${request.bookId}`}>See the book’s journey →</Link></div> : allowed ? <form className="card p-4 space-y-3" onSubmit={async e => {
       e.preventDefault(); setBusy(true);
-      const saved = await runAction(() => communityAction('completeHandoff', {requestId:id, code:params.get('code'), note, lat:user.lat, lng:user.lng, agreedPrice: request.exchangeMode === 'sale' ? Number(agreedPrice) : null}));
+      const saved = await runAction(() => completeHandoff(request, {code:params.get('code'), note, lat:user.lat, lng:user.lng, agreedPrice: request.exchangeMode === 'sale' ? Number(agreedPrice) : null}));
       setBusy(false); if (saved) { setDone(true); setCelebrating(true); window.history.replaceState(null, '', `/handoff/${id}`); }
     }}>
       <p className="font-bold text-warm-800">{request.bookTitle}</p>

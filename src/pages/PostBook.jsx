@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, BookOpen, ArrowLeft, X } from 'lucide-react';
-import { addBook, GENRES, getJoinedGroups } from '../store';
+import { GENRES, getJoinedGroups } from '../store';
+import { publishListing } from '../lib/trackedActions';
 import BookLookup from '../components/BookLookup';
 import { runAction } from '../lib/cloud';
 import { conditionFromChecks, getPriceGuide } from '../lib/bookGuidance';
@@ -87,7 +88,7 @@ export default function PostBook({ user }) {
     if (Object.keys(errs).length) return setErrors(errs);
     setSaving(true);
     const saved = await runAction(async () => {
-      await addBook({
+      await publishListing({
         title: title.trim(), author: author.trim(), isbn: isbn.replace(/[^0-9X]/gi, '').slice(0, 13), format,
         condition, conditionChecks, genre, note: note.trim(), imageDataUrl: sellerPhotos[0] || catalogCoverUrl, photoUrls: sellerPhotos.slice(1),
         exchangeMode, askPrice: exchangeMode === 'sale' ? Number(askPrice) : null,

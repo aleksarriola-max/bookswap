@@ -20,7 +20,7 @@ const LAYERS = {
   },
 };
 
-export default function NeighborhoodMap({ user, books, radius }) {
+export default function NeighborhoodMap({ user, books, radius, onOpen }) {
   const container = useRef(null);
   const map = useRef(null);
   const [layer, setLayer] = useState('satellite');
@@ -98,7 +98,7 @@ export default function NeighborhoodMap({ user, books, radius }) {
       {tileError && <p role="status" className="text-xs text-warm-700">Some map images couldn’t load. Check your connection or try the other map background.</p>}
       <div className="flex flex-wrap gap-2 text-xs text-warm-700 bg-warm-50 rounded-xl p-3"><span>📖 Book</span><span>● Number: grouped books</span><span className="text-blue-700">● Your neighborhood</span><span className="ml-auto">Within {radius} km</span></div>
       <p className="text-xs text-warm-500">Tap a marker for cover previews. Zoom in to separate nearby groups. Locations are approximate.</p>
-      {previews.length > 0 && <div className="space-y-2" aria-live="polite"><div className="flex justify-between items-center"><h3 className="text-sm font-bold text-warm-800">{previews.length} {previews.length === 1 ? 'book' : 'books'} at this marker</h3><button className="btn-ghost text-xs" onClick={()=>setSelected([])}>Clear selection</button></div>{previews.map(book=><BookCard key={book.id} book={book} distance={distanceKm(user.lat,user.lng,book.lat,book.lng)} />)}</div>}
+      {previews.length > 0 && <div className="space-y-2" aria-live="polite"><div className="flex justify-between items-center"><h3 className="text-sm font-bold text-warm-800">{previews.length} {previews.length === 1 ? 'book' : 'books'} at this marker</h3><button className="btn-ghost text-xs" onClick={()=>setSelected([])}>Clear selection</button></div>{previews.map(book=><BookCard key={book.id} book={book} onOpen={onOpen} distance={distanceKm(user.lat,user.lng,book.lat,book.lng)} />)}</div>}
       {books.length === 0 && <p className="text-sm text-warm-600">No books match these filters. Try a wider radius or another genre.</p>}
       <div className="card p-3 space-y-2">
         <h3 className="text-sm font-semibold text-warm-700">Places to meet</h3>
