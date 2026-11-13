@@ -124,6 +124,44 @@ Rerunning the seed creates no duplicates and preserves existing listings.
    two accounts on separate devices: post, request, accept, message, offer a time,
    confirm a meetup, and complete the exchange.
 
+## Product analytics (PostHog)
+
+The app sends a small, fixed set of study events to PostHog (project ID 734175).
+Analytics is **off** unless both `VITE_POSTHOG_KEY` and `VITE_POSTHOG_HOST` are set,
+and it only runs for signed-in accounts on the shared Supabase backend. Guest/local
+sessions and School preview (demo) listings are never tracked, and PostHog is not
+even loaded for them.
+
+| Variable | Value |
+| --- | --- |
+| `VITE_POSTHOG_KEY` | PostHog project token (Project settings → Project token, starts with `phc_`) |
+| `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` (US cloud) or `https://eu.i.posthog.com` (EU cloud), matching the project's region |
+| `VITE_POSTHOG_TEST_MODE` | Optional. `true` adds `test_mode: true` to every event so team traffic can be filtered out |
+
+Locally, put these in `.env.local` (git-ignored); `.env.example` keeps them blank.
+In Vercel, add `VITE_POSTHOG_KEY` and `VITE_POSTHOG_HOST` under **Settings →
+Environment Variables** for both **Production** and **Preview**, using the same values.
+Set `VITE_POSTHOG_TEST_MODE=true` for Preview only (team testing), and leave it unset
+in Production. Vite inlines these at build time, so redeploy after changing them.
+The project token is a public client key, but keep it out of Git anyway.
+
+Events: `listing_published` (listing_type, condition, book_count), `listing_selected`
+(listing_type, discovery_source), `request_submitted`, `request_accepted`,
+`availability_offered` (+ slot_count), `meetup_confirmed`, `handoff_completed`
+(outcome event), all with `listing_type` (`sale` or `exchange`), plus
+`comparison_submitted` (task, comparison) from the fixed-choice `/study-feedback`
+page and `$pageview` with route templates such as `/handoff/:id`.
+
+Privacy rules, enforced in `src/lib/analyticsPolicy.js` as PostHog's `before_send` hook:
+only these events and properties leave the browser. Raw URLs, referrers, query strings,
+QR/handoff codes, account and record IDs, titles and all free text are dropped. The
+identifier is PostHog's random anonymous browser ID (`identify` is never called and no
+person profiles are created). Click autocapture, session replay, exception capture,
+heatmaps, surveys, feature flags and web vitals are disabled. Write events are sent
+only after the save succeeds and are de-duplicated per record in the browser, so
+retries do not double-count. In PostHog project settings, also consider enabling
+**Discard client IP data**.
+
 Vercel Hobby is for personal, noncommercial projects. Check current free quotas
 for Vercel and Supabase before scaling beyond the school demo.
 
@@ -141,7 +179,12 @@ npm run test:backend
 npm run test:community
 npm run test:personal
 npm run test:marketplace
+npm run test:analytics
 ```
+
+`test:analytics` checks the allowlist and success-only capture in Node, then runs the
+real posthog-js SDK in headless Chrome (all network traffic intercepted) and inspects
+the outgoing payload.
 
 The embedded Postgres tests run the actual database schema with stand-ins for
 Supabase auth and storage infrastructure. They cover chat privacy, owner spoofing,

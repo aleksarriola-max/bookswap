@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import {
   getRequests, getMessagesForRequest, sendMessage, updateRequestStatus,
-  setRequestAvailability, confirmSlot, SLOT_LABELS, MEETUP_SPOTS,
+  SLOT_LABELS, MEETUP_SPOTS,
 } from '../store';
+import { acceptRequest, offerAvailability, confirmMeetup } from '../lib/trackedActions';
 import Confetti from '../components/Confetti';
 import MeetupPlaces from '../components/MeetupPlaces';
 
@@ -168,18 +169,18 @@ export default function ChatThread({ user }) {
     });
   };
   const handleSendAvailability = slots => runAction(async () => {
-    await setRequestAvailability(requestId, slots);
+    await offerAvailability(request, slots);
     const labels = slots.map(id => SLOT_LABELS.find(s => s.id === id)?.label).join(', ');
     await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: '📅 I am free: ' + labels });
     load(); return true;
   });
   const handleConfirmSlot = (slot, spot) => runAction(async () => {
-    await confirmSlot(requestId, slot, spot);
+    await confirmMeetup(request, slot, spot);
     const label = SLOT_LABELS.find(s => s.id === slot)?.label;
     await sendMessage({ requestId, senderId: user.id, senderName: user.name, text: '✅ Confirmed: ' + label + ' at ' + spot });
     load(); return true;
   });
-  const handleAccept = () => runAction(async () => { await updateRequestStatus(requestId, 'accepted'); load(); });
+  const handleAccept = () => runAction(async () => { await acceptRequest(request); load(); });
   const handleDecline = () => runAction(async () => { await updateRequestStatus(requestId, 'declined'); load(); });
 
   const hasAvailability = request.offeredSlots && request.offeredSlots.length > 0;

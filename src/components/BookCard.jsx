@@ -49,14 +49,14 @@ export function BookCover({ book, size = 'md' }) {
   );
 }
 
-export default function BookCard({ book, distance, layout = 'list' }) {
+export default function BookCard({ book, distance, layout = 'list', onOpen }) {
   const stats = getUserStats(book.ownerId);
   const badge = getRepBadge(stats.total);
   const genreObj = GENRES.find((g) => g.id === book.genre);
   const grid = layout === 'grid';
 
   return (
-    <Link to={`/book/${book.id}`}
+    <Link to={`/book/${book.id}`} onClick={onOpen ? () => onOpen(book) : undefined}
       className={`card book-card group flex ${grid ? 'flex-col overflow-hidden' : 'gap-3.5 p-3.5'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm-600 focus-visible:ring-offset-2`}>
       <div className={grid ? 'shelf-cover flex justify-center items-center relative py-5' : ''}>
         <BookCover book={book} size={grid ? 'shelf' : 'md'} />

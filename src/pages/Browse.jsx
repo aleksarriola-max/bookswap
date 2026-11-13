@@ -8,6 +8,7 @@ import WishlistMatches from '../components/WishlistMatches';
 import CommunityChallenge from '../components/CommunityChallenge';
 import PersonalDiscovery from '../components/PersonalDiscovery';
 import { getJoinedGroups } from '../store';
+import { recordListingSelected } from '../lib/trackedActions';
 const NeighborhoodMap = lazy(() => import('../components/NeighborhoodMap'));
 
 const CONDITIONS = ['All', 'Like new', 'Good', 'Worn'];
@@ -41,6 +42,9 @@ export default function Browse({ user }) {
     const matchCond = condition === 'All' || b.condition === condition;
     return matchSearch && matchGenre && matchCond && (!groupId || b.groupId === groupId) && b.ownerId !== user.id;
   });
+
+  // Opening a listing from the (optionally group-filtered) results. Demo books are ignored.
+  const handleOpen = book => recordListingSelected(book, { groupId });
 
   const handleSurprise = () => {
     const pool = modeBooks.filter((b) => b.ownerId !== user.id && b.status !== 'gone');
@@ -198,8 +202,8 @@ export default function Browse({ user }) {
       <div className="px-4 pb-4 space-y-3">
         <WishlistMatches user={user} radius={radius} showDemo={showSchoolPreview} />
         <CommunityChallenge groupId={groupId} />
-        {view !== 'map' && <PersonalDiscovery books={filtered} user={user} />}
-        {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} /></Suspense> : filtered.length === 0 ? (
+        {view !== 'map' && <PersonalDiscovery books={filtered} user={user} onOpen={handleOpen} />}
+        {view === 'map' ? <Suspense fallback={<p className="text-sm text-warm-500 py-8">Loading your neighborhood map…</p>}><NeighborhoodMap user={user} books={filtered} radius={radius} onOpen={handleOpen} /></Suspense> : filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">📭</div>
             <p className="font-semibold text-warm-700" style={{ fontFamily: 'Lora, Georgia, serif' }}>
@@ -223,7 +227,7 @@ export default function Browse({ user }) {
             </div>
             <div className={view === 'grid' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
               {filtered.map((book) => (
-                <BookCard key={book.id} book={book} layout={view} distance={distanceKm(user.lat, user.lng, book.lat, book.lng)} />
+                <BookCard key={book.id} book={book} layout={view} onOpen={handleOpen} distance={distanceKm(user.lat, user.lng, book.lat, book.lng)} />
               ))}
             </div>
             {/* Wishlist CTA at bottom */}
